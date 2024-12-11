@@ -220,6 +220,28 @@ function EditableCodeDiv(props) {
   );
 }
 
+function WebcamContainer(){
+  return(
+    <React.Fragment>
+
+      <Box>
+        <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
+          <Typography variant="h5" component="h2">
+            <Box fontWeight="fontWeightBold">
+              Webcams
+            </Box>
+          </Typography>
+        </Box>
+      </Box>
+
+      <Card >
+        <CardContent sx={{p: 1}}>
+          <HLSVideoPlayer streamUrl="http://localhost:8000/stream.m3u8" />
+          </CardContent>
+      </Card>
+    </React.Fragment>
+)}
+
 
 function Webcam(props) {
     React.useEffect(() => {
@@ -228,7 +250,7 @@ function Webcam(props) {
     return (
         <Grid container spacing={2} >
           <Grid item md={12} xs={12}>
-             <HLSVideoPlayer streanUrl="http://localhost:8000/stream.m3u8" />
+             <WebcamContainer/>
           </Grid>
         </Grid>
     )

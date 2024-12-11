@@ -195,7 +195,7 @@ export default function SideNavAndHeader() {
           return response.json();
         })
         .then((data) => {
-          setLatestVersion(data['tag_naViewTimelineOutlinedIconme'])
+          setLatestVersion(data['tag_name'])
         }).catch(e => {
           // no internet?
         });
@@ -225,7 +225,7 @@ export default function SideNavAndHeader() {
               renderExpandIcon={({level, active, disabled}) => null }
               menuItemStyles={{
                 label:  {whiteSpace: "pre-wrap"},
-                button: ({ level, activeViewTimelineOutlinedIcon, disabled }) => {
+                button: ({ level, active, disabled }) => {
                   // only apply styles on first level elements of the tree
                   if (level === 0)
                     return {
@@ -280,7 +280,7 @@ export default function SideNavAndHeader() {
                 component={<Link to="/webcam" className="link" />}
                 active={isSelected("/webcam")}
                 >
-                Webcam
+                Webcams
               </MenuItem>
 
             <Divider sx={{marginTop: "15px", marginBottom: "15px"}} />
