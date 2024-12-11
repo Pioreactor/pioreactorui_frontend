@@ -45,7 +45,7 @@ const HLSVideoPlayer = ({ streamUrl }) => {
     return (
         <div>
             {streamUrl ? (
-                <video ref={videoRef} controls style={{ width: '50%', height: 'auto' }} />
+                <video ref={videoRef} controls style={{ width: '100%', height: 'auto' }} />
             ) : (
                 <p>Error: Stream URL is missing.</p>
             )}

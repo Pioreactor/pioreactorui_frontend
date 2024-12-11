@@ -1,229 +1,29 @@
-import React, {useEffect, useState} from "react";
-
+import React, { useState } from "react";
 import Grid from '@mui/material/Grid';
 import Card from '@mui/material/Card';
-import CardContent from '@mui/material/Card';
-import FormControl from '@mui/material/FormControl';
-import LoadingButton from '@mui/lab/LoadingButton';
-import FormLabel from '@mui/material/FormLabel';
+import CardContent from '@mui/material/CardContent';
+import TextField from '@mui/material/TextField';
+import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
-import MenuItem from '@mui/material/MenuItem';
-import {Typography} from '@mui/material';
-import Snackbar from '@mui/material/Snackbar';
-import Select from '@mui/material/Select';
-import SaveIcon from '@mui/icons-material/Save';
-import Editor from 'react-simple-code-editor';
-import { highlight, languages } from 'prismjs';
-import 'prismjs/components/prism-ini';
-import HLSVideoPlayer from "./components/HLSVideoPlayer";
+import HLSVideoPlayer from "./components/HLSVideoPlayer"; // Import your HLSVideoPlayer component
 
-import dayjs from "dayjs";
+function WebcamContainer() {
+  // State to store stream URLs for two video players
+  const [streamUrl1, setStreamUrl1] = useState("http://localhost:8000/stream.m3u8");
+  const [streamUrl2, setStreamUrl2] = useState("http://localhost:8000/stream.m3u8");
 
-
-function EditableCodeDiv(props) {
-  const [state, setState] = useState({
-    code: null,
-    openSnackbar: false,
-    filename: "config.ini",
-    snackbarMsg: "",
-    saving: false,
-    historicalConfigs: [{ filename: "config.ini", data: "", timestamp: "2000-01-01" }],
-    timestamp_ix: 0,
-    errorMsg: "",
-    isError: false,
-    hasChangedSinceSave: true,
-    availableConfigs: [{ name: "shared config.ini", filename: "config.ini" }]
-  });
-
-  const getConfig = (filename) => {
-    fetch(`/api/configs/${filename}`)
-      .then(response => response.text())
-      .then(text => setState(prev => ({ ...prev, code: text })));
+  // Function to handle stream URL change for video player 1
+  const handleUrlChange1 = (e) => {
+    setStreamUrl1(e.target.value);
   };
 
-
-  const getHistoricalConfigFiles = (filename) => {
-    fetch(`/api/configs/${filename}/history`)
-      .then(response => response.json())
-      .then(listOfHistoricalConfigs => setState(prev => ({
-        ...prev,
-        historicalConfigs: listOfHistoricalConfigs,
-        timestamp_ix: 0
-      })));
-  };
-
-  const saveCurrentCode = () => {
-    setState(prev => ({ ...prev, saving: true, isError: false }));
-    fetch(`/api/configs/${state.filename}`, {
-      method: "PATCH",
-      body: JSON.stringify({ code: state.code, filename: state.filename }),
-      headers: {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json'
-      }
-    })
-    .then(res => {
-      if (res.ok) {
-        setState(prev => ({ ...prev, snackbarMsg: `Success: ${state.filename} saved and synced.`, hasChangedSinceSave: false, saving: false, openSnackbar: true }));
-      } else {
-        res.json().then(parsedJson =>
-          setState(prev => ({ ...prev, errorMsg: parsedJson['msg'], isError: true, hasChangedSinceSave: true, saving: false }))
-        )
-      }
-    });
-  };
-
-  useEffect(() => {
-    getConfig(state.filename);
-    getHistoricalConfigFiles(state.filename);
-  }, []);
-
-  useEffect(() => {
-    let ignore = false;
-
-    async function getConfigs() {
-      fetch("/api/configs")
-      .then(response => response.json())
-      .then(json => {
-        if (ignore){
-          return
-        }
-        setState(prev => ({
-        ...prev,
-        availableConfigs: [...prev.availableConfigs, ...json.filter(e => e !== 'config.ini').map(e => ({ name: e, filename: e }))]
-        }))
-      });
-    }
-
-    getConfigs()
-
-    return () => {
-      ignore = true;
-    };
-  }, []);
-
-  const onSelectionChange = (e) => {
-    const filename = e.target.value;
-    setState(prev => ({ ...prev, filename: filename, code: "Loading..." }));
-    getConfig(filename);
-    getHistoricalConfigFiles(filename);
-  };
-
-  const onSelectionHistoricalChange = (e) => {
-    const timestamp = e.target.value;
-    const ix = state.historicalConfigs.findIndex((c) => c.timestamp === timestamp);
-    const configBlob = state.historicalConfigs[ix];
-    setState(prev => ({ ...prev, code: configBlob.data, timestamp_ix: ix }));
-  };
-
-  const onTextChange = (code) => {
-    setState(prev => ({ ...prev, code: code, hasChangedSinceSave: true }));
-  };
-
-  const handleSnackbarClose = () => {
-    setState(prev => ({ ...prev, openSnackbar: false }));
+  // Function to handle stream URL change for video player 2
+  const handleUrlChange2 = (e) => {
+    setStreamUrl2(e.target.value);
   };
 
   return (
     <React.Fragment>
-      <div style={{ width: "100%", margin: "10px", display: "flex", justifyContent: "space-between" }}>
-        <FormControl>
-          <div>
-            <FormLabel component="legend">Config file</FormLabel>
-            <Select
-              labelId="configSelect"
-              variant="standard"
-              value={state.filename}
-              onChange={onSelectionChange}
-            >
-              {state.availableConfigs.map((v) => (
-                <MenuItem key={v.filename} value={v.filename}>{v.name}</MenuItem>
-              ))}
-            </Select>
-          </div>
-        </FormControl>
-        {state.historicalConfigs.length > 0 ? (
-          <FormControl style={{ marginRight: "20px" }}>
-            <div>
-              <FormLabel component="legend">Versions</FormLabel>
-              <Select
-                labelId="historicalConfigSelect"
-                variant="standard"
-                value={state.historicalConfigs.length > 0 ? state.historicalConfigs[state.timestamp_ix].timestamp : ""}
-                displayEmpty={true}
-                onChange={onSelectionHistoricalChange}
-              >
-                {state.historicalConfigs.map((v, i) => (
-                  <MenuItem key={v.timestamp} value={v.timestamp}>{i === 0 ? "Current" : dayjs(v.timestamp).format("MMM DD, YYYY [at] hh:mm a")}</MenuItem>
-                ))}
-              </Select>
-            </div>
-          </FormControl>
-        ) : <div></div>}
-
-      </div>
-
-        <div style={{
-            tabSize: "4ch",
-            border: "1px solid #ccc",
-            margin: "10px auto 10px auto",
-            position: "relative",
-            width: "98%",
-            borderRadius: "4px",
-            height: "320px",
-            maxHeight: "320px",
-            overflow: "auto",
-            flex: 1
-        }}>
-          {(state.code !== null) &&
-              <Editor
-                value={state.code}
-                onValueChange={onTextChange}
-                highlight={(code) => highlight(code, languages.ini)}
-                padding={10}
-                style={{
-                  fontSize: "14px",
-                  fontFamily: 'monospace',
-                  backgroundColor: "hsla(0, 0%, 100%, .5)",
-                  borderRadius: "3px",
-                  minHeight: "100%"
-                }}
-              />
-            }
-      </div>
-      <div style={{ display: "flex", justifyContent: "space-between" }}>
-        <div>
-          <LoadingButton
-            style={{ margin: "5px 12px 5px 12px", textTransform: 'none' }}
-            color="primary"
-            variant="contained"
-            onClick={saveCurrentCode}
-            disabled={!state.hasChangedSinceSave}
-            loading={state.saving}
-            loadingPosition="end"
-            endIcon={<SaveIcon />}
-          >
-            {state.timestamp_ix === 0 ? "Save" : "Revert"}
-          </LoadingButton>
-          <p style={{ marginLeft: 12 }}>{state.isError ? <Box color="error.main">{state.errorMsg}</Box> : ""}</p>
-        </div>
-      </div>
-      <Snackbar
-        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
-        open={state.openSnackbar}
-        onClose={handleSnackbarClose}
-        message={state.snackbarMsg}
-        autoHideDuration={2500}
-        key={"edit-config-snackbar"}
-      />
-    </React.Fragment>
-  );
-}
-
-function WebcamContainer(){
-  return(
-    <React.Fragment>
-
       <Box>
         <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
           <Typography variant="h5" component="h2">
@@ -232,29 +32,67 @@ function WebcamContainer(){
             </Box>
           </Typography>
         </Box>
+
+
+
+
+
       </Box>
 
-      <Card >
-        <CardContent sx={{p: 1}}>
-          <HLSVideoPlayer streamUrl="http://localhost:8000/stream.m3u8" />
-          </CardContent>
-      </Card>
-    </React.Fragment>
-)}
+      {/* Grid layout to display two video players side by side */}
+      <Grid container spacing={2}>
+        <Grid item md={6} xs={12}>
+          <Card>
+            <CardContent sx={{ p: 1 }}>
+            {/* Input for stream URL 1 */}
+        <TextField
+          label="Enter Stream URL 1"
+          variant="outlined"
+          fullWidth
+          value={streamUrl1}
+          onChange={handleUrlChange1}
+          sx={{ marginBottom: 2 }}
+        />
+              {/* First Video Player */}
+              <HLSVideoPlayer streamUrl={streamUrl1} />
+            </CardContent>
+          </Card>
+        </Grid>
 
+        <Grid item md={6} xs={12}>
+          <Card>
+            <CardContent sx={{ p: 1 }}>
+            {/* Input for stream URL 2 */}
+        <TextField
+          label="Enter Stream URL 2"
+          variant="outlined"
+          fullWidth
+          value={streamUrl2}
+          onChange={handleUrlChange2}
+          sx={{ marginBottom: 2 }}
+        />
+              {/* Second Video Player */}
+              <HLSVideoPlayer streamUrl={streamUrl2} />
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
+    </React.Fragment>
+  );
+}
 
 function Webcam(props) {
-    React.useEffect(() => {
-      document.title = props.title;
-    }, [props.title])
-    return (
-        <Grid container spacing={2} >
-          <Grid item md={12} xs={12}>
-             <WebcamContainer/>
-          </Grid>
-        </Grid>
-    )
+  React.useEffect(() => {
+    document.title = props.title;
+  }, [props.title]);
+
+  return (
+    <Grid container spacing={2}>
+      <Grid item md={12} xs={12}>
+        <WebcamContainer />
+      </Grid>
+    </Grid>
+  );
 }
 
 export default Webcam;
-
