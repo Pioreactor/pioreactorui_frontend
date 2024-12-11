@@ -22,6 +22,7 @@ import DashboardOutlinedIcon from '@mui/icons-material/DashboardOutlined';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import InsertChartOutlinedIcon from '@mui/icons-material/InsertChartOutlined';
 import ViewTimelineOutlinedIcon from '@mui/icons-material/ViewTimelineOutlined';
+import VideocamOutlinedIcon from '@mui/icons-material/VideocamOutlined';
 import ChatOutlinedIcon from '@mui/icons-material/ChatOutlined';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Sidebar, Menu, MenuItem, SubMenu} from "react-pro-sidebar";
@@ -194,7 +195,7 @@ export default function SideNavAndHeader() {
           return response.json();
         })
         .then((data) => {
-          setLatestVersion(data['tag_name'])
+          setLatestVersion(data['tag_naViewTimelineOutlinedIconme'])
         }).catch(e => {
           // no internet?
         });
@@ -224,7 +225,7 @@ export default function SideNavAndHeader() {
               renderExpandIcon={({level, active, disabled}) => null }
               menuItemStyles={{
                 label:  {whiteSpace: "pre-wrap"},
-                button: ({ level, active, disabled }) => {
+                button: ({ level, activeViewTimelineOutlinedIcon, disabled }) => {
                   // only apply styles on first level elements of the tree
                   if (level === 0)
                     return {
@@ -270,6 +271,16 @@ export default function SideNavAndHeader() {
                 active={isSelected("/experiment-profiles")}
                 >
                 Profiles
+              </MenuItem>
+
+              <MenuItem
+                icon={
+                      <VideocamOutlinedIcon/>
+                  }
+                component={<Link to="/webcam" className="link" />}
+                active={isSelected("/webcam")}
+                >
+                Webcam
               </MenuItem>
 
             <Divider sx={{marginTop: "15px", marginBottom: "15px"}} />
