@@ -9,8 +9,8 @@ import HLSVideoPlayer from "./components/HLSVideoPlayer"; // Import your HLSVide
 
 function WebcamContainer() {
   // State to store stream URLs for two video players
-  const [streamUrl1, setStreamUrl1] = useState("http://localhost:8000/stream.m3u8");
-  const [streamUrl2, setStreamUrl2] = useState("http://localhost:8000/stream.m3u8");
+  const [streamUrl1, setStreamUrl1] = useState("data/webcam.m3u8");
+  const [streamUrl2, setStreamUrl2] = useState("data/webcam.m3u8");
 
   // Function to handle stream URL change for video player 1
   const handleUrlChange1 = (e) => {
