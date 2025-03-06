@@ -39,6 +39,18 @@ u {
     100% { opacity: 1;}
 }
 
+.blinkicon {
+    animation-name: blink2;
+    animation-duration: 0.70s;
+    animation-iteration-count: 1;
+}
+@keyframes blink2 {
+    0%   { opacity: 1;}
+    13%  { opacity: 0;}
+    26%  { opacity: 1;}
+}
+
+
 .indicator-dot {
   width:8px;
   height:8px;
@@ -53,6 +65,13 @@ u {
   border-radius:5px;
   box-shadow: 0 0 8px #ea4c89, inset 0 0 12px #ea4c89;
   margin: auto 10px auto 0px;
+}
+
+.indicator-dot-as-legend{
+  width:10px;
+  height:10px;
+  border-radius:5px;
+  margin: auto 7px auto 0px;
 }
 
 .readonlyEditor textarea {

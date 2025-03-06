@@ -12,7 +12,7 @@ import InputLabel from '@mui/material/InputLabel';
 import Chip from '@mui/material/Chip';
 import Typography from '@mui/material/Typography';
 import { MQTTProvider, useMQTT } from './providers/MQTTContext';
-import {getConfig} from "./utilities"
+import ManageInventoryMenu from './components/ManageInventoryMenu';
 import Box from '@mui/material/Box';
 import Divider from '@mui/material/Divider';
 import FormControlLabel from '@mui/material/FormControlLabel';
@@ -26,7 +26,6 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import IconButton from '@mui/material/IconButton';
 import TextField from '@mui/material/TextField';
 import Tooltip from '@mui/material/Tooltip';
-import InputAdornment from '@mui/material/InputAdornment';
 import LoadingButton from '@mui/lab/LoadingButton';
 import CheckIcon from '@mui/icons-material/Check';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
@@ -35,21 +34,13 @@ import CircularProgress from '@mui/material/CircularProgress';
 import { useConfirm } from 'material-ui-confirm';
 import { useNavigate } from 'react-router-dom';
 import UnderlineSpan from "./components/UnderlineSpan";
+import Pioreactor40Icon from "./components/Pioreactor40Icon";
 import PioreactorIcon from "./components/PioreactorIcon";
-import WarningIcon from '@mui/icons-material/Warning';
-import Menu from "@mui/material/Menu";
-import ListItemText from "@mui/material/ListItemText";
-import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
-import DeleteOutlinedIcon from '@mui/icons-material/DeleteOutlined';
-import PanToolOutlinedIcon from '@mui/icons-material/PanToolOutlined';
-import ListIcon from '@mui/icons-material/List';
-import ListItemIcon from '@mui/material/ListItemIcon';
 import PowerSettingsNewIcon from '@mui/icons-material/PowerSettingsNew';
+import {getConfig, disconnectedGrey, lostRed, inactiveGrey, readyGreen} from "./utilities"
+import PlayCircleOutlinedIcon from '@mui/icons-material/PlayCircleOutlined';
 
-const disconnectedGrey = "#585858"
-const lostRed = "#DE3618"
-const inactiveGrey = "#99999b"
-const readyGreen = "#3f8451"
+import { useExperiment } from './providers/ExperimentContext';
 
 const textIcon = {verticalAlign: "middle", margin: "0px 3px"}
 
@@ -68,109 +59,11 @@ function Header(props) {
           <ManageInventoryMenu/>
         </Box>
       </Box>
-       <Divider sx={{marginTop: "0px", marginBottom: "15px"}} />
+      <Divider sx={{marginTop: "0px", marginBottom: "15px"}} />
     </Box>
   )
 }
 
-
-
-function ManageInventoryMenu(){
-  const [anchorEl, setAnchorEl] = React.useState(null);
-  const open = Boolean(anchorEl);
-  const confirm = useConfirm();
-  const navigate = useNavigate();
-
-
-  const handleClick = (event) => {
-    setAnchorEl(event.currentTarget);
-  };
-  const handleClose = () => {
-    setAnchorEl(null);
-  };
-
-  const handleReboot = () => {
-    confirm({
-      description: 'This will halt running activities in worker Pioreactors and reboot them. Do you wish to continue?',
-      title: "Reboot all workers?",
-      confirmationText: "Confirm",
-      confirmationButtonProps: {color: "primary"},
-      cancellationButtonProps: {color: "secondary"},
-
-      }).then(() =>
-        fetch('/api/workers/system/reboot', {method: "POST"})
-    );
-
-  };
-
-  const handleShutdown = () => {
-    confirm({
-      description: 'This will halt running activities in worker Pioreactors and shut them down. A power-cycle is required to restart them. Do you wish to continue?',
-      title: "Shutdown all workers?",
-      confirmationText: "Confirm",
-      confirmationButtonProps: {color: "primary"},
-      cancellationButtonProps: {color: "secondary"},
-
-      }).then(() =>
-        fetch('/api/workers/system/shutdown', {method: "POST"})
-      )
-  };
-  const handleUnassign = () => {
-    confirm({
-      description: 'Unassign all workers from active experiments. This will also halt all activities in worker Pioreactors. Do you wish to continue?',
-      title: "Unassign all workers?",
-      confirmationText: "Confirm",
-      confirmationButtonProps: {color: "primary"},
-      cancellationButtonProps: {color: "secondary"},
-
-      }).then(() =>
-        fetch('/api/workers/assignments', {method: "DELETE"})
-      ).then(() => navigate(0)).catch(() => {});
-
-  };
-
-  return (
-    <div>
-      <Button
-        aria-controls={open ? 'basic-menu' : undefined}
-        aria-haspopup="true"
-        aria-expanded={open ? 'true' : undefined}
-        onClick={handleClick}
-        style={{textTransform: "None"}}
-      >
-        Manage inventory <ArrowDropDownIcon/>
-      </Button>
-      <Menu
-        id="manage-inv"
-        anchorEl={anchorEl}
-        open={open}
-        onClose={handleClose}
-        MenuListProps={{
-          'aria-labelledby': 'basic-button',
-        }}
-      >
-        <MenuItem onClick={handleUnassign}>
-          <ListItemIcon>
-            <RemoveCircleOutlineRoundedIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>Unassign all workers</ListItemText>
-        </MenuItem>
-        <MenuItem onClick={handleReboot}>
-          <ListItemIcon>
-            <RestartAltIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>Reboot all workers</ListItemText>
-        </MenuItem>
-        <MenuItem onClick={handleShutdown}>
-          <ListItemIcon>
-            <PowerSettingsNewIcon fontSize="small" />
-          </ListItemIcon>
-          <ListItemText>Shutdown all workers</ListItemText>
-        </MenuItem>
-      </Menu>
-    </div>
-  );
-}
 
 
 
@@ -236,7 +129,7 @@ function AddNewPioreactor(props){
         setExpectedPathMsg("")
         if(!response.ok){
           setIsError(true)
-          response.json().then(data => setErrorMsg(`Unable to complete connection. The following error occurred: ${data.msg}`))
+          response.json().then(data => setErrorMsg(`Unable to complete connection. The following error occurred: ${data.error}`))
         } else {
           setIsSuccess(true)
           props.setWorkers((prevWorkers) => [...prevWorkers, {pioreactor_unit: name, is_active: true}])
@@ -252,7 +145,7 @@ function AddNewPioreactor(props){
     </Button>
     <Dialog open={open} onClose={handleClose} aria-labelledby="form-dialog-title">
       <DialogTitle>
-        Add new Pioreactor worker to your cluster
+        Add a new Pioreactor to your cluster
         <IconButton
           aria-label="close"
           onClick={handleClose}
@@ -345,6 +238,8 @@ function WorkerCard({worker, config, leaderVersion}) {
   const [ipv4, setIpv4] = React.useState(null)
   const [WLANaddress, setWLANaddress] = React.useState(null)
   const [ETHAddress, setETHAddress] = React.useState(null)
+  const { selectExperiment } = useExperiment();
+  const navigate = useNavigate()
 
 
   const isActive = () => {
@@ -450,6 +345,10 @@ function WorkerCard({worker, config, leaderVersion}) {
     })
   };
 
+  const onExperimentClick = () => {
+    selectExperiment(experimentAssigned)
+    navigate("/overview")
+  }
 
   const pioreactorString = () => {
     if (!(state === "ready" || state === "init")){
@@ -501,8 +400,14 @@ function WorkerCard({worker, config, leaderVersion}) {
                 ...(isActive() ? {} : { color: inactiveGrey }),
               }}
               gutterBottom>
-              <PioreactorIcon  style={{verticalAlign: "middle", marginRight: "3px"}} sx={{ display: {xs: 'none', sm: 'none', md: 'inline' } }}/>
+              {(versions.pioreactor_model !== "pioreactor_40ml") &&
+              <PioreactorIcon style={{verticalAlign: "middle", marginRight: "3px"}} sx={{ display: {xs: 'none', sm: 'none', md: 'inline' } }}/>
+              }
+              {(versions.pioreactor_model === "pioreactor_40ml") &&
+              <Pioreactor40Icon style={{verticalAlign: "middle", marginRight: "3px"}} sx={{ display: {xs: 'none', sm: 'none', md: 'inline' } }}/>
+              }
               {unit}
+
             </Typography>
             <Tooltip title={indicatorLabel} placement="right">
               <div>
@@ -525,9 +430,14 @@ function WorkerCard({worker, config, leaderVersion}) {
 
         </div>
 
-        <Typography variant="subtitle2" color={isActive() ? "inherit" : inactiveGrey}  >
-          {experimentAssigned ? <>Assigned to <Chip disabled={!isActive()} size="small" label={experimentAssigned}/> </> : "Unassigned"}
-        </Typography>
+        <Box sx={{display: "flex", justifyContent: "left", ml: .5}}>
+          {experimentAssigned ? (
+            <>
+            <Typography variant="subtitle2" color={isActive() ? "inherit" : inactiveGrey}> Assigned to <Chip icon=<PlayCircleOutlinedIcon/> disabled={!isActive()} size="small" label={experimentAssigned} clickable onClick={onExperimentClick} /> </Typography>
+            </>)
+          : <Typography variant="subtitle2" color={isActive() ? "inherit" : inactiveGrey}> Unassigned </Typography>
+        }
+        </Box>
 
         <Divider sx={{margin: "5px 0px"}}/>
 
@@ -617,7 +527,7 @@ function Blink({unit}){
 )}
 
 
-function Reboot({unit, isLeader}) {
+function Reboot({unit}) {
 
   const confirm = useConfirm();
 
@@ -640,7 +550,7 @@ function Reboot({unit, isLeader}) {
 )}
 
 
-function Shutdown({unit, isLeader}) {
+function Shutdown({unit}) {
 
   const confirm = useConfirm();
 

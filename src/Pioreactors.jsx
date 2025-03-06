@@ -38,10 +38,11 @@ import TuneIcon from '@mui/icons-material/Tune';
 import IconButton from '@mui/material/IconButton';
 import Switch from '@mui/material/Switch';
 import { useConfirm } from 'material-ui-confirm';
-import {getConfig, getRelabelMap, runPioreactorJob} from "./utilities"
 import Alert from '@mui/material/Alert';
 import LibraryAddCheckOutlinedIcon from '@mui/icons-material/LibraryAddCheckOutlined';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import PlayCircleOutlinedIcon from '@mui/icons-material/PlayCircleOutlined';
+import { Table, TableBody, TableCell, TableHead, TableRow } from '@mui/material';
 
 import { useNavigate, Link } from 'react-router-dom'
 
@@ -51,28 +52,15 @@ import ActionManualDosingForm from "./components/ActionManualDosingForm"
 import ActionCirculatingForm from "./components/ActionCirculatingForm"
 import ActionLEDForm from "./components/ActionLEDForm"
 import PioreactorIcon from "./components/PioreactorIcon"
+import PioreactorsIcon from "./components/PioreactorsIcon"
 import SelfTestDialog from "./components/SelfTestDialog"
 import UnderlineSpan from "./components/UnderlineSpan";
 import ManageExperimentMenu from "./components/ManageExperimentMenu";
 import { MQTTProvider, useMQTT } from './providers/MQTTContext';
 import { useExperiment } from './providers/ExperimentContext';
 import PatientButton from './components/PatientButton';
+import {getConfig, getRelabelMap, runPioreactorJob, disconnectedGrey, lostRed, disabledColor, stateDisplay, checkTaskCallback} from "./utilities"
 
-
-const readyGreen = "#176114"
-const disconnectedGrey = "#585858"
-const lostRed = "#DE3618"
-const disabledColor = "rgba(0, 0, 0, 0.38)"
-
-
-const stateDisplay = {
-  "init":          {display: "Starting", color: readyGreen, backgroundColor: "#DDFFDC"},
-  "ready":         {display: "On", color: readyGreen, backgroundColor: "#DDFFDC"},
-  "sleeping":      {display: "Paused", color: disconnectedGrey, backgroundColor: null},
-  "disconnected":  {display: "Off", color: disconnectedGrey, backgroundColor: null},
-  "lost":          {display: "Lost", color: lostRed, backgroundColor: null},
-  "NA":            {display: "Not available", color: disconnectedGrey, backgroundColor: null},
-}
 
 
 function StateTypography({ state, isDisabled=false }) {
@@ -93,8 +81,9 @@ function StateTypography({ state, isDisabled=false }) {
 }
 
 
+const textIcon = {verticalAlign: "middle", margin: "0px 3px"}
 
-const StylizedCode = styled('code')(({ theme }) => ({
+const StylizedCode = styled('code')(() => ({
   backgroundColor: "rgba(0, 0, 0, 0.07)",
   padding: "1px 4px"
 }));
@@ -303,7 +292,7 @@ function ButtonStopProcess({experiment}) {
 
   return (
     <Button style={{textTransform: 'none', float: "right" }} color="secondary" onClick={handleClick}>
-      <ClearIcon fontSize="15" sx={{verticalAlign: "middle", margin: "0px 3px"}}/> Stop all activity
+      <ClearIcon fontSize="15" sx={textIcon}/> Stop all activity
     </Button>
   );
 }
@@ -315,10 +304,10 @@ const CustomFormControlLabel = ({ label, sublabel, ...props }) => (
   <FormControlLabel
     control={props.control}
     label={
-      <div>
+      <Box>
         <Typography variant="body1">{label}</Typography>
         {sublabel && <Typography variant="body2" color={disabledColor}>{sublabel}</Typography>}
-      </div>
+      </Box>
     }
     {...props}
   />
@@ -331,8 +320,13 @@ function AssignPioreactors({ experiment, variant="text" }) {
   const [selectAll, setSelectAll] = React.useState(false);
   const [open, setOpen] = React.useState(false);
   const navigate = useNavigate();
+  const { selectExperiment } = useExperiment();
 
   useEffect(() => {
+    if (!open){
+      return
+    }
+
     fetch("/api/workers/assignments")
       .then((data) => data.json())
       .then((json) => {
@@ -344,7 +338,7 @@ function AssignPioreactors({ experiment, variant="text" }) {
         setAssigned(assignments);
         setInitialAssigned(assignments);
       });
-  }, [experiment]);
+  }, [experiment, open]);
 
   function compareObjects(o1, o2) {
     const differences = {};
@@ -435,7 +429,7 @@ function AssignPioreactors({ experiment, variant="text" }) {
       <Dialog
         open={open}
         onClose={handleClose}
-        fullWidth={false}
+        fullWidth={true}
         aria-labelledby="form-dialog-title"
       >
         <DialogTitle>
@@ -456,9 +450,8 @@ function AssignPioreactors({ experiment, variant="text" }) {
         </DialogTitle>
         <DialogContent>
           <p>
-            {" "}
             Assign and unassign Pioreactors to experiment{" "}
-            <Chip size="small" label={experiment}/>.{" "}
+            <Chip icon=<PlayCircleOutlinedIcon/>  size="small" label={experiment} clickable onClick={() => selectExperiment(experiment)}/>.
           </p>
           <FormControl sx={{ m: "auto" }} component="fieldset" variant="standard">
             <FormLabel component="legend">Pioreactors</FormLabel>
@@ -480,18 +473,19 @@ function AssignPioreactors({ experiment, variant="text" }) {
                 workers.length > 8
                   ? {
                       display: "grid",
-                      gridTemplateColumns: "1fr 1fr 1fr",
+                      gridTemplateColumns: "1fr 1fr",
                       columnGap: "30px",
                     }
                   : {}
               }
             >
-              {workers.map((worker) => {
+              {(workers || []).map((worker) => {
                 const unit = worker.pioreactor_unit;
                 const exp = worker.experiment;
                 const disabled = exp !== null && exp !== experiment;
-                const label = unit;
-                const sublabel = disabled ? `(assigned to ${exp})` : null;
+                const sublabel = disabled ?
+                  <>assigned to <Chip icon=<PlayCircleOutlinedIcon/> size="small" label={exp} clickable onClick={() => selectExperiment(exp)} /> </>
+                  : null;
 
                 return (
                   <CustomFormControlLabel
@@ -502,9 +496,10 @@ function AssignPioreactors({ experiment, variant="text" }) {
                         onChange={handleChange}
                         checked={!disabled && assigned[unit]}
                         name={unit}
+                        sx={{ mb: sublabel ? 3 : 0 }}
                       />
                     }
-                    label={label}
+                    label={unit}
                     sublabel={sublabel}
                   />
                 );
@@ -553,6 +548,29 @@ function PioreactorHeader({experiment}) {
 function CalibrateDialog(props) {
   const [open, setOpen] = useState(false);
   const [tabValue, setTabValue] = useState(0);
+  const [activeCalibrations, setActiveCalibrations] = useState({})
+
+  useEffect(() => {
+
+    if (!open) {
+      return;
+    }
+
+    const apiUrl = `/api/workers/${props.unit}/active_calibrations`;
+
+    const fetchCalibrations = async () => {
+      try {
+        const response = await fetch(apiUrl);
+        const firstResponse = await response.json();
+        const data = await checkTaskCallback(firstResponse.result_url_path, {delayMs: 200})
+        setActiveCalibrations(data.result[props.unit]);
+      } catch (err) {
+        console.error("Failed to fetch calibration:", err);
+      }
+    };
+
+    fetchCalibrations();
+  }, [open, props.unit] )
 
 
   const handleTabChange = (event, newValue) => {
@@ -597,12 +615,13 @@ function CalibrateDialog(props) {
    }
 
   const isGrowRateJobRunning = props.growthRateJobState === "ready"
-  const blankODButton = createUserButtonsBasedOnState(props.odBlankJobState, "od_blank", isGrowRateJobRunning)
+  const hasActiveODCalibration = "od" in (activeCalibrations || {})
+  const blankODButton = createUserButtonsBasedOnState(props.odBlankJobState, "od_blank", (isGrowRateJobRunning || hasActiveODCalibration))
 
   return (
     <React.Fragment>
       <Button style={{textTransform: 'none', float: "right" }} color="primary" disabled={props.disabled} onClick={handleClickOpen}>
-        <TuneIcon color={props.disabled ? "disabled" : "primary"} fontSize="15" sx={{verticalAlign: "middle", margin: "0px 3px"}}/> Calibrate
+        <TuneIcon color={props.disabled ? "disabled" : "primary"} fontSize="15" sx={textIcon}/> Calibrate
       </Button>
       <Dialog open={open} onClose={handleClose} aria-labelledby="form-dialog-title">
         <DialogTitle>
@@ -615,6 +634,7 @@ function CalibrateDialog(props) {
             indicatorColor="primary"
             textColor="primary"
             >
+            <Tab label="Calibrations"/>
             <Tab label="Blanks"/>
           </Tabs>
           <IconButton
@@ -631,7 +651,7 @@ function CalibrateDialog(props) {
           </IconButton>
         </DialogTitle>
         <DialogContent>
-          <TabPanel value={tabValue} index={0}>
+          <TabPanel value={tabValue} index={1}>
             <Typography  gutterBottom>
              Record optical densities of blank (optional)
             </Typography>
@@ -640,17 +660,80 @@ function CalibrateDialog(props) {
               media's <i>un-inoculated</i> optical density <i>per experiment</i>. Read more about <a href="https://docs.pioreactor.com/user-guide/od-normal-growth-rate#blanking">using blanks</a>.
             </Typography>
             <Typography variant="body2" component="p" style={{margin: "20px 0px"}}>
-              Recorded optical densities of blank vial: <code>{props.odBlankReading ? Object.entries(JSON.parse(props.odBlankReading)).map( ([k, v]) => `${k}:${v.toFixed(5)}` ).join(", ") : "—"}</code>
+              Recorded optical densities of blank vial: <code>{props.odBlankReading ? Object.entries(JSON.parse(props.odBlankReading) || {}).map( ([k, v]) => `${k}:${v.toFixed(5)}` ).join(", ") : "—"}</code>
             </Typography>
 
             <div style={{display: "flex"}}>
-              {blankODButton}
+
+              {hasActiveODCalibration &&
+                <UnderlineSpan title="If an active OD calibration is present, this isn't used.">
+                  {blankODButton}
+                </UnderlineSpan>
+                }
+              {!hasActiveODCalibration &&
+                <div>
+                {blankODButton}
+                </div>
+              }
+
               <div>
                 <Button size="small" sx={{width: "70px", mt: "5px", height: "31px", mr: '3px'}} color="secondary" disabled={(props.odBlankReading === null) || (isGrowRateJobRunning)} onClick={() => runPioreactorJob(props.unit, props.experiment, "od_blank", ['delete']) }> Clear </Button>
               </div>
             </div>
             <ManageDivider/>
 
+          </TabPanel>
+          <TabPanel value={tabValue} index={0}>
+            <Typography gutterBottom>
+              Active calibrations
+            </Typography>
+            <Typography variant="body2" component="p" gutterBottom>
+              Below are the active calibrations that will be used when running devices like pumps, stirring, etc. Read more about{' '}
+              <a href="https://docs.pioreactor.com/user-guide/hardware-calibrations">calibrations</a>.
+            </Typography>
+
+            {Object.entries(activeCalibrations || {}).length === 0 ? (
+              // Empty state message when there are no active calibrations.
+              <Typography variant="body2" component="p" color="textSecondary" sx={{mt: 3}}>
+                There are no active calibrations available.
+              </Typography>
+            ) : (
+              // Table rendering when active calibrations exist.
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell align="left" sx={{ padding: '6px 0px' }}>Device</TableCell>
+                    <TableCell align="left" sx={{ padding: '6px 0px' }}>Calibration name</TableCell>
+                    <TableCell align="left" sx={{ padding: '6px 0px' }}>Calibrated on</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {Object.entries(activeCalibrations).map(([device, calibration]) => {
+                    const calName = calibration.calibration_name;
+                    return (
+                      <TableRow key={`${calName}-${device}`}>
+                        <TableCell align="left" sx={{ padding: '6px 0px' }}>
+                          {device}
+                        </TableCell>
+                        <TableCell align="left" sx={{ padding: '6px 0px' }}>
+                          <Chip
+                            size="small"
+                            icon={<TuneIcon />}
+                            label={calName}
+                            clickable
+                            component={Link}
+                            to={`/calibrations/${props.unit}/${device}/${calName}`}
+                          />
+                        </TableCell>
+                        <TableCell align="left" sx={{ padding: '6px 0px' }}>
+                          {dayjs(calibration.created_at).format('YYYY-MM-DD')}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            )}
           </TabPanel>
         </DialogContent>
       </Dialog>
@@ -853,7 +936,7 @@ function SettingsActionsDialog(props) {
 
 
   const LEDMap = props.config['leds'] || {}
-  const buttons = Object.fromEntries(Object.entries(props.jobs).map( ([job_key, job], i) => [job_key, createUserButtonsBasedOnState(job.state, job_key)]))
+  const buttons = Object.fromEntries(Object.entries(props.jobs || {}).map( ([job_key, job], _) => [job_key, createUserButtonsBasedOnState(job.state, job_key)]))
   const versionInfo = JSON.parse(props.jobs.monitor.publishedSettings.versions.value || "{}")
   const voltageInfo = JSON.parse(props.jobs.monitor.publishedSettings.voltage_on_pwm_rail.value || "{}")
   const ipInfo = props.jobs.monitor.publishedSettings.ipv4.value
@@ -868,7 +951,7 @@ function SettingsActionsDialog(props) {
   return (
     <div>
     <Button style={{textTransform: 'none', float: "right" }} disabled={props.disabled} onClick={handleClickOpen} color="primary">
-      <SettingsIcon color={props.disabled ? "disabled" : "primary"} fontSize="15" sx={{verticalAlign: "middle", margin: "0px 3px"}}/> Manage
+      <SettingsIcon color={props.disabled ? "disabled" : "primary"} fontSize="15" sx={textIcon}/> Manage
     </Button>
     <Dialog maxWidth={isLargeScreen ? "sm" : "md"} fullWidth={true} open={open} onClose={handleClose} PaperProps={{
       sx: {
@@ -912,7 +995,7 @@ function SettingsActionsDialog(props) {
         <TabPanel value={tabValue} index={0}>
           {/* Unit Specific Activites */}
           {Object.entries(props.jobs)
-            .filter(([job_key, job]) => job.metadata.display)
+            .filter(([_, job]) => job.metadata.display)
             .filter(([job_key, job]) => !['dosing_automation', 'led_automation', 'temperature_automation'].includes(job_key)) // added later
             .map(([job_key, job]) =>
             <div key={job_key}>
@@ -1627,7 +1710,7 @@ function SettingsActionsDialogAll({experiment}) {
   }
 
 
-  const buttons = Object.fromEntries(Object.entries(jobs).map( ([job_key, job], i) => [job_key, createUserButtonsBasedOnState(job)]))
+  const buttons = Object.fromEntries(Object.entries(jobs || {}).map( ([job_key, job], i) => [job_key, createUserButtonsBasedOnState(job)]))
   const isLargeScreen = useMediaQuery(theme => theme.breakpoints.down('xl'));
   var dosingControlJob = jobs.dosing_automation
   var ledControlJob = jobs.led_automation
@@ -1636,7 +1719,7 @@ function SettingsActionsDialogAll({experiment}) {
   return (
     <React.Fragment>
     <Button style={{textTransform: 'none', float: "right" }} onClick={handleClickOpen} color="primary">
-      <SettingsIcon fontSize="15" sx={{verticalAlign: "middle", margin: "0px 3px"}}/> Manage Pioreactors
+      <SettingsIcon fontSize="15" sx={textIcon}/> Manage Pioreactors
     </Button>
     <Dialog  maxWidth={isLargeScreen ? "sm" : "md"} fullWidth={true}  open={open} onClose={handleClose} aria-labelledby="form-dialog-title"  PaperProps={{
       sx: {
@@ -1645,7 +1728,7 @@ function SettingsActionsDialogAll({experiment}) {
     }}>
       <DialogTitle style={{backgroundImage: "linear-gradient(to bottom left, rgba(83, 49, 202, 0.4), rgba(0,0,0,0))"}}>
         <Typography sx={{fontSize: "13px", color: "rgba(0, 0, 0, 0.60)",}}>
-          <b>All assigned & active Pioreactors</b>
+          <PioreactorsIcon style={{verticalAlign: "middle", fontSize: "1.2em"}}/> <b>All assigned & active Pioreactors</b>
         </Typography>
         <IconButton
           aria-label="close"
@@ -2086,7 +2169,7 @@ function SettingNumericField(props) {
 
 
 
-function ActiveUnits({experiment, config, units, isLoading}){
+function ActiveUnits({experiment, config, units}){
   const [relabelMap, setRelabelMap] = useState({})
 
   useEffect(() => {
@@ -2095,7 +2178,7 @@ function ActiveUnits({experiment, config, units, isLoading}){
     }
   }, [experiment])
 
-  const renderCards = () => units.map(unit =>
+  const renderCards = () => (units || []).map(unit =>
       <PioreactorCard  key={unit} isUnitActive={true} unit={unit} config={config} experiment={experiment} originalLabel={relabelMap[unit]}/>
   )
 
@@ -2127,7 +2210,7 @@ function FlashLEDButton(props){
   }
   return (
     <Button style={{textTransform: 'none', float: "right"}} className={flashing ? 'blinkled' : ''}  disabled={props.disabled} onClick={onClick} color="primary">
-      <FlareIcon color={props.disabled ? "disabled" : "primary"} fontSize="15" sx={{verticalAlign: "middle", margin: "0px 3px"}}/> <span > Identify </span>
+      <FlareIcon color={props.disabled ? "disabled" : "primary"} fontSize="15" sx={textIcon}/> <span > Identify </span>
     </Button>
 )}
 
@@ -2396,7 +2479,7 @@ function PioreactorCard({unit, isUnitActive, experiment, config, originalLabel})
           {Object.values(jobs)
               .filter(job => job.metadata.display)
               .map(job => (
-            <Box sx={{width: "130px", mt: "10px", mr: "2px"}} key={job.metadata.key}>
+            <Box sx={{width: "130px", mt: "10px", mr: "2px", p: "0px 3px"}} key={job.metadata.key}>
               <Typography variant="body2" style={{fontSize: "0.84rem"}} sx={{ color: !isUnitActive ? disabledColor : 'inherit' }}>
                 {job.metadata.display_name}
               </Typography>
@@ -2435,7 +2518,7 @@ function PioreactorCard({unit, isUnitActive, experiment, config, originalLabel})
               Object.entries(settings)
                 .filter(([setting_key, setting], _) => setting.display)
                 .map(([setting_key, setting], _) =>
-                  <Box sx={{width: "130px", mt: "10px", mr: "2px"}} key={job_key + setting_key}>
+                  <Box sx={{width: "130px", mt: "10px", mr: "2px", p: "0px 3px"}} key={job_key + setting_key}>
                     <Typography variant="body2" style={{fontSize: "0.84rem"}} sx={{ color: !isUnitActive ? disabledColor : 'inherit' }}>
                       {setting.label}
                     </Typography>
@@ -2470,7 +2553,7 @@ function InactiveUnits(props){
         </Box>
       </Typography>
     </div>
-    {props.units.map(unit =>
+    {(props.units || []).map(unit =>
       <PioreactorCard  key={unit} isUnitActive={false} unit={unit} config={props.config} experiment={props.experiment}/>
   )}
     </React.Fragment>
@@ -2517,7 +2600,7 @@ function Pioreactors({title}) {
       const inactiveUnits = workers.filter(worker => worker.is_active === 0).map(worker => worker.pioreactor_unit);
       return (
       <>
-      <ActiveUnits isLoading={isLoading} experiment={experimentMetadata.experiment} config={config} units={activeUnits} />
+      <ActiveUnits experiment={experimentMetadata.experiment} config={config} units={activeUnits} />
       { (inactiveUnits.length > 0) &&
       <InactiveUnits experiment={experimentMetadata.experiment} config={config} units={inactiveUnits}/>
       }

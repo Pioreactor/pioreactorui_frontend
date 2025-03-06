@@ -17,6 +17,7 @@ import ListSubheader from '@mui/material/ListSubheader';
 import {AppBar, Typography, Button} from '@mui/material';
 import PioreactorIcon from './PioreactorIcon';
 import PioreactorsIcon from './PioreactorsIcon';
+//import Icon2x2Grid from './Icon2x2Grid';
 import LibraryAddOutlinedIcon from '@mui/icons-material/LibraryAddOutlined';
 import DashboardOutlinedIcon from '@mui/icons-material/DashboardOutlined';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
@@ -27,9 +28,12 @@ import ChatOutlinedIcon from '@mui/icons-material/ChatOutlined';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Sidebar, Menu, MenuItem, SubMenu} from "react-pro-sidebar";
 import { useExperiment } from '../providers/ExperimentContext';
-import ScienceOutlinedIcon from '@mui/icons-material/ScienceOutlined';
-import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
+import AddIcon from '@mui/icons-material/Add';
+import TuneIcon from '@mui/icons-material/Tune';
+import SubdirectoryArrowRightIcon from '@mui/icons-material/SubdirectoryArrowRight';
+import PlayCircleOutlinedIcon from '@mui/icons-material/PlayCircleOutlined';
 
+const ExpIcon = PlayCircleOutlinedIcon
 
 const drawerWidth = 230;
 
@@ -47,7 +51,7 @@ const ConditionalTooltip = ({condition, title, children}) => {
     <>
       {condition ? (
         <Tooltip placement="top" title={title}>
-          {children}
+          <span>{children}</span>
         </Tooltip>
       ) : (
         children
@@ -57,11 +61,10 @@ const ConditionalTooltip = ({condition, title, children}) => {
 };
 
 
-const SelectableMenuItem = ({allExperiments, experiment, updateExperiment}) => {
+const SelectableMenuItem = ({experiment, availableExperiments, selectExperiment}) => {
   const navigate = useNavigate();
   const [selectOpen, setSelectOpen] = React.useState(false);
   const [activeExperiments, setActiveExperiments] = React.useState(new Set([]))
-
   React.useEffect(() => {
     async function getActiveExperiments() {
          await fetch("/api/experiments/assignment_count")
@@ -88,14 +91,14 @@ const SelectableMenuItem = ({allExperiments, experiment, updateExperiment}) => {
 
   function handleExperimentChange(e) {
     const currentPath = window.location.pathname.split('/')[1]; // Assumes the base path is at the first segment
-    const allowedPaths = ['pioreactors', 'experiment-profiles', 'overview'];
+    const allowedPaths = ['pioreactors', 'experiment-profiles', 'overview', 'logs'];
 
     if (!allowedPaths.includes(currentPath)) {
       navigate('/overview');
     }
 
     if (e.target.value){
-      updateExperiment(allExperiments.find(obj => obj.experiment === e.target.value));
+      selectExperiment(e.target.value);
     }
 
     setSelectOpen(false)
@@ -104,9 +107,12 @@ const SelectableMenuItem = ({allExperiments, experiment, updateExperiment}) => {
 
     <ConditionalTooltip
       title={experiment}
-      condition={experiment.length > 18}
+      condition={experiment && experiment.length > 14}
     >
-    <MenuItem onClick={handleMenuItemClick} icon={<ScienceOutlinedIcon />}>
+    <MenuItem
+      onClick={handleMenuItemClick}
+      icon={<ExpIcon sx={{fontSize: "23px"}} /> }
+    >
       <FormControl variant="standard" fullWidth>
         <Select
           open={selectOpen}
@@ -128,25 +134,25 @@ const SelectableMenuItem = ({allExperiments, experiment, updateExperiment}) => {
           }}
         >
           <MenuItemMUI value={null} component={Link} to="/start-new-experiment">
-            <AddCircleOutlineIcon fontSize="15" sx={{ verticalAlign: 'middle', margin: '0px 3px' }} />
+            <AddIcon sx={{ verticalAlign: 'middle', margin: '0px 3px 0px 0px', fontSize: "21px"}} />
             New experiment
           </MenuItemMUI>
           <Divider />
           <ListSubheader>Active</ListSubheader>
-          {allExperiments
-            .filter((e) => activeExperiments.has(e.experiment))
+          {availableExperiments
+            .filter((e) => activeExperiments.has(e))
             .map((e) => (
-              <MenuItemMUI key={e.experiment} value={e.experiment}>
-                {e.experiment}
+              <MenuItemMUI key={e} value={e}>
+                {e}
               </MenuItemMUI>
             ))}
           <Divider />
           <ListSubheader>Inactive</ListSubheader>
-          {allExperiments
-            .filter((e) => !activeExperiments.has(e.experiment))
+          {availableExperiments
+            .filter((e) => !activeExperiments.has(e))
             .map((e) => (
-              <MenuItemMUI key={e.experiment} value={e.experiment}>
-                {e.experiment}
+              <MenuItemMUI key={e} value={e}>
+                {e}
               </MenuItemMUI>
             ))}
         </Select>
@@ -165,7 +171,9 @@ export default function SideNavAndHeader() {
   const [version, setVersion] = React.useState(null)
   const [lap, setLAP] = React.useState(false)
   const [latestVersion, setLatestVersion] = React.useState(null)
-  const {experimentMetadata, updateExperiment, allExperiments} = useExperiment()
+  const [openSubmenu, setOpenSubmenu] = React.useState("")
+  const {experimentMetadata, selectExperiment, allExperiments} = useExperiment()
+
 
   React.useEffect(() => {
     async function getLAP() {
@@ -204,7 +212,12 @@ export default function SideNavAndHeader() {
     getCurrentApp()
     getLatestVersion()
     getLAP()
+
   }, [])
+
+  React.useEffect(() => {
+    setOpenSubmenu(location.pathname.substr(1))
+  }, [location.pathname])
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -221,58 +234,79 @@ export default function SideNavAndHeader() {
         <div style={{ flex: 1}}>
 
           <Menu
+              transitionDuration={0}
               style={{minWidth: "230px", width: "230px", height: "100%"}}
               renderExpandIcon={({level, active, disabled}) => null }
               menuItemStyles={{
-                label:  {whiteSpace: "pre-wrap"},
+                label:  {whiteSpace: "pre-wrap", fontSize: "16px"},
                 button: ({ level, active, disabled }) => {
-                  // only apply styles on first level elements of the tree
-                  if (level === 0)
-                    return {
-                      color: disabled ? '#00000050' : (active ? '#5331ca' : 'inherit'),
-                      backgroundColor: active ? '#5331ca14' : undefined,
-                    };
+                  const sx = {
+                    color: disabled ? '#00000050' : (active ? '#5331ca' : 'inherit'),
+                    backgroundColor: active ? '#5331ca14' : undefined,
+                    height: "43px",
+                    fontWeight: active ? 500 : 450,
+                  };
+                  if (level === 1){
+                    sx.paddingLeft = "58px"
+                    sx.color = disabled ? '#00000050' : (active ? '#5331ca' : 'rgb(75, 75, 75)')
+                    sx.fontWeight = active ? 500 : 400
+                  }
+                  return sx
                 },
                 icon: ({level, active, disabled}) => {
                   return {
-                    color: disabled ? '#00000050' : (active ? '#5331ca' : '#0000008a'),
+                    color: disabled ? '#00000050' : (active ? '#5331ca' : 'rgba(0,0,0, 0.6)'),
+                    marginRight: "8px",
+                    minWidth: "30px",
+                    width: "30px"
                   };
                 }
               }}
             >
               <SelectableMenuItem
-                experiment={experimentMetadata.experiment || ""}
-                allExperiments={allExperiments}
-                updateExperiment={updateExperiment}
+                experiment={experimentMetadata.experiment || ""} // CAM: don't remove the ""
+                availableExperiments={allExperiments.map(v => v.experiment)}
+                selectExperiment={selectExperiment}
                 />
 
               <MenuItem
-                icon={<DashboardOutlinedIcon/>}
+                icon={<DashboardOutlinedIcon sx={{fontSize: "23px"}}/>}
                 component={<Link to="/overview" className="link" />}
                 active={(isSelected("/") || isSelected("/overview"))}
+
                 >
                 Overview
               </MenuItem>
 
               <SubMenu
-                icon={<PioreactorIcon viewBox="-3 0 24 24"/>}
+                open={openSubmenu==="pioreactors" || openSubmenu==="logs"}
+                icon={<PioreactorIcon  sx={{fontSize: "23px"}}/>}
                 component={<Link to="/pioreactors" className="link" />}
                 active={isSelected("/pioreactors")}
-                label="Pioreactors"
-                >
 
+                label={"Pioreactors"}
+                >
+                <MenuItem
+                  component={<Link to="/logs" className="link" />}
+                  active={isSelected("/logs")}
+                  icon={<SubdirectoryArrowRightIcon  sx={{fontSize: "23px"}}/>}
+                  >
+                  Event logs
+                </MenuItem>
               </SubMenu>
 
               <MenuItem
                 icon={
-                      <ViewTimelineOutlinedIcon/>
+                      <ViewTimelineOutlinedIcon  sx={{fontSize: "23px"}}/>
                   }
                 component={<Link to="/experiment-profiles" className="link" />}
                 active={isSelected("/experiment-profiles")}
+
                 >
                 Profiles
               </MenuItem>
 
+<<<<<<< HEAD
               <MenuItem
                 icon={
                       <VideocamOutlinedIcon/>
@@ -282,69 +316,103 @@ export default function SideNavAndHeader() {
                 >
                 Webcams
               </MenuItem>
+=======
+>>>>>>> main
 
             <Divider sx={{marginTop: "15px", marginBottom: "15px"}} />
           </Menu>
         </div>
         <div>
           <Menu
+              transitionDuration={0}
               style={{minWidth: "230px", width: "230px", height: "100%"}}
               renderExpandIcon={({level, active, disabled}) => null }
               menuItemStyles={{
-                label:  {whiteSpace: "pre-wrap"},
+                label:  {whiteSpace: "pre-wrap", fontSize: "16px"},
                 button: ({ level, active, disabled }) => {
-                  // only apply styles on first level elements of the tree
-                  if (level === 0)
-                    return {
-                      color: disabled ? '#00000050' : (active ? '#5331ca' : 'inherit'),
-                      backgroundColor: active ? '#5331ca14' : undefined,
-                    };
+                  const sx = {
+                    color: disabled ? '#00000050' : (active ? '#5331ca' : 'inherit'),
+                    backgroundColor: active ? '#5331ca14' : undefined,
+                    height: "43px",
+                    fontWeight: active ? 500 : 400,
+                  };
+                  if (level === 1){
+                    sx.paddingLeft = "58px"
+                    sx.color = disabled ? '#00000050' : (active ? '#5331ca' : 'rgb(75, 75, 75)')
+                    sx.fontWeight = active ? 500 : 400
+                  }
+                  return sx
                 },
                 icon: ({level, active, disabled}) => {
                   return {
-                    color: disabled ? '#00000050' : (active ? '#5331ca' : '#0000008a'),
+                    color: disabled ? '#00000050' : (active ? '#5331ca' : 'rgba(0,0,0, 0.6)'),
+                    marginRight: "8px",
+                    minWidth: "30px",
+                    width: "30px"
                   };
                 }
               }}
             >
+
                 <MenuItem
-                  icon={<SettingsOutlinedIcon/> }
+                  open={openSubmenu==="config"}
+                  icon={<SettingsOutlinedIcon sx={{fontSize: "23px"}}/> }
                   component={<Link to="/config" className="link" />}
                   active={isSelected("/config")}
-                  >
-                  Configuration
 
+                >
+                Configuration
                 </MenuItem>
 
-                <MenuItem
-                  icon={<PioreactorsIcon viewBox="0 0 18 19"/> }
+                <SubMenu label="Inventory"
+                  open={openSubmenu==="inventory" || openSubmenu==="leader"}
+                  icon={<PioreactorsIcon sx={{fontSize: "23px"}} />}
                   component={<Link to="/inventory" className="link" />}
                   active={isSelected("/inventory")}
-                  >
-                  Inventory
 
+                >
+                  <MenuItem
+                    component={<Link to="/leader" className="link" />}
+                    active={isSelected("/leader")}
+                    icon={<SubdirectoryArrowRightIcon  sx={{fontSize: "23px"}}/>}
+                    >
+                    Leader
+                  </MenuItem>
+
+                </SubMenu>
+
+                <MenuItem
+                  icon={<TuneIcon sx={{fontSize: "23px"}}/> }
+                  component={<Link to="/calibrations" className="link" />}
+                  active={isSelected("/calibrations")}
+
+                  >
+                  Calibrations
                 </MenuItem>
 
                 <MenuItem
-                  icon={<SaveAltIcon/> }
+                  icon={<SaveAltIcon sx={{fontSize: "23px"}}/> }
                   component={<Link to="/export-data" className="link" />}
                   active={isSelected("/export-data")}
+
                   >
                   Export data
                 </MenuItem>
 
                 <MenuItem
-                  icon={<InsertChartOutlinedIcon/> }
+                  icon={<InsertChartOutlinedIcon sx={{fontSize: "23px"}}/> }
                   component={<Link to="/experiments" className="link" />}
                   active={isSelected("/experiments")}
+
                   >
                   Past experiments
                 </MenuItem>
 
                 <MenuItem
-                  icon={<LibraryAddOutlinedIcon/> }
+                  icon={<LibraryAddOutlinedIcon sx={{fontSize: "23px"}}/> }
                   component={<Link to="/plugins" className="link" />}
                   active={isSelected("/plugins")}
+
                   >
                   Plugins
                 </MenuItem>
@@ -352,11 +420,12 @@ export default function SideNavAndHeader() {
                 <MenuItem
                   icon={
                     <Badge variant="dot" color="secondary" invisible={!((version) && (latestVersion) && (version !== latestVersion))}>
-                        <UpdateIcon/>
+                        <UpdateIcon sx={{fontSize: "23px"}}/>
                     </Badge>
                     }
                   component={<Link to="/updates" className="link" />}
                   active={isSelected("/updates")}
+
                   >
                   Updates
                 </MenuItem>

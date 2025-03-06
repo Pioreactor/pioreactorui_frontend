@@ -36,13 +36,27 @@
   "scripts": {
     "start": "react-scripts start",
     "dev": "react-scripts start",
+    "lint:fix": "eslint . --ext .js,.jsx,.ts,.tsx --fix",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "postbuild": "rm -rf ../pioreactorui/static rm ../pioreactorui/precache-manifest* && cp -R build/* ../pioreactorui && mkdir -p ../pioreactorui/static/exports/ && touch ../pioreactorui/static/exports/.gitignore"
   },
   "eslintConfig": {
-    "extends": "react-app"
+    "extends": "react-app",
+    "plugins": ["unused-imports"],
+    "rules": {
+      "unused-imports/no-unused-imports": "warn",
+      "unused-imports/no-unused-vars": [
+        "warn",
+        {
+          "vars": "all",
+          "varsIgnorePattern": "^_",
+          "args": "after-used",
+          "argsIgnorePattern": "^_"
+        }
+      ]
+    }
   },
   "browserslist": {
     "production": [
@@ -63,6 +77,8 @@
     "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
     "css-loader": "^5.0.1",
     "prettier": "2.1.2",
-    "style-loader": "^2.0.0"
+    "style-loader": "^2.0.0",
+    "eslint-plugin-react": "^7.37.3",
+    "eslint-plugin-unused-imports": "^4.1.4"
   }
 }

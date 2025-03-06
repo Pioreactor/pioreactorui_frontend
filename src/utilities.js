@@ -78,7 +78,7 @@ export function runPioreactorJob(unit, experiment, job, args = [], options = {},
     });
 }
 
-export function runPioreactorJobViaUnitAPI(unit, job, args = [], options = {}) {
+export function runPioreactorJobViaUnitAPI(job, args = [], options = {}) {
     return fetch(`/unit_api/jobs/run/job_name/${job}`, {
       method: "PATCH",
       body: JSON.stringify({ args: args, options: options}),
@@ -126,24 +126,69 @@ export const colors = [
   "#009988",
   "#CC3311",
   "#33BBEE",
-  "#be5f29",
+  "#BE5F29",
   "#EE3377",
-  "#8e958f",
-  "#a6cee3",
-  "#1f78b4",
-  "#33a02c",
-  "#c97b7a",
-  "#e31a1c",
-  "#fdbf6f",
-  "#cab2d6",
-  "#6a3d9a",
-  "#b15928",
+  "#8E958F",
+  "#A6CEE3",
+  "#33A02C",
+  "#C97B7A",
+  "#FDBF6F",
+  "#CAB2D6",
+  "#6A3D9A",
   "#9ACD32",
   "#40E0D0",
-  "#4682B4",
-  "#aa5caa"
+  "#737B94",
+  "#AA5CAA",
+  "#15742A",
+  "#236AD3",
+  "#445210",
+  "#62F384",
+  "#311535",
+  "#803958",
+  "#B4F2AA",
+  "#1734B8",
+
 ];
 
 export const ERROR_COLOR = "#ff7961"
 export const WARNING_COLOR = "#FFEA8A"
 export const NOTICE_COLOR = "#addcaf"
+
+
+export async function checkTaskCallback(callbackURL, {maxRetries = 100, delayMs = 200} = {}) {
+  if (maxRetries <= 0) {
+    throw new Error('Max retries reached. Stopping.');
+  }
+
+  try {
+    const response = await fetch(callbackURL);
+    if (response.status === 200) {
+      return await response.json();
+    }
+    // If not 200, wait, decrement retry count, try again
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
+    return checkTaskCallback(callbackURL, maxRetries - 1, delayMs);
+  } catch (err) {
+    console.error('Error fetching callback:', err);
+    // Wait, decrement retry count, try again
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
+    return checkTaskCallback(callbackURL, maxRetries - 1, delayMs);
+  }
+}
+
+
+export const readyGreen = "#176114"
+export const disconnectedGrey = "#585858"
+export const lostRed = "#DE3618"
+export const disabledColor = "rgba(0, 0, 0, 0.38)"
+export const inactiveGrey = "#99999b"
+
+
+export const stateDisplay = {
+  "init":          {display: "Starting", color: readyGreen, backgroundColor: "#DDFFDC"},
+  "ready":         {display: "On", color: readyGreen, backgroundColor: "#DDFFDC"},
+  "sleeping":      {display: "Paused", color: disconnectedGrey, backgroundColor: null},
+  "disconnected":  {display: "Off", color: disconnectedGrey, backgroundColor: null},
+  "lost":          {display: "Lost", color: lostRed, backgroundColor: null},
+  "NA":            {display: "Not available", color: disconnectedGrey, backgroundColor: null},
+}

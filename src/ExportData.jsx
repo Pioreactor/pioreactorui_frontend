@@ -1,4 +1,5 @@
 import React from "react";
+import Divider from '@mui/material/Divider';
 
 import Grid from '@mui/material/Grid';
 import FormControl from '@mui/material/FormControl';
@@ -17,6 +18,7 @@ import { useTheme } from '@mui/material/styles';
 import Chip from '@mui/material/Chip';
 import { Accordion, AccordionSummary, AccordionDetails, Table, TableBody, TableCell, TableHead, TableRow } from '@mui/material';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
+import PlayCircleOutlinedIcon from '@mui/icons-material/PlayCircleOutlined';
 
 
 const datasetDescription = {
@@ -55,7 +57,9 @@ function MultipleSelectChip({availableValues, parentHandleChange}) {
   return (
     <div>
       <FormControl fullWidth variant="standard" component="fieldset" sx={{ maxWidth: 470 }}>
-        <Typography variant="h6" gutterBottom >Experiments</Typography>
+        <Typography variant="h6" gutterBottom >
+          <Box fontWeight="fontWeightRegular">Experiments</Box>
+        </Typography>
         <Select
           labelId="expSelect"
           variant="standard"
@@ -65,7 +69,7 @@ function MultipleSelectChip({availableValues, parentHandleChange}) {
           renderValue={(selected) => (
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
               {selected.map((value) => (
-                <Chip key={value} label={value} />
+                <Chip icon=<PlayCircleOutlinedIcon/> key={value} label={value} />
               ))}
             </Box>
           )}
@@ -81,9 +85,10 @@ function MultipleSelectChip({availableValues, parentHandleChange}) {
               value={value}
               style={getStyles(value, values, theme)}
             >
-              {value}
+              <Checkbox checked={values.includes(value)} /> {value}
             </MenuItem>
           ))}
+
         </Select>
       </FormControl>
     </div>
@@ -102,7 +107,7 @@ function ExperimentSelection(props) {
         const data = await response.json();
         const experimentNames = data.map((e) => e.experiment);
 
-        // Ensure "<All experiments>" is always at the top
+        // Ensure "<All experiments>" is always at the bottom
         setExperiments([...experimentNames, "<All experiments>"]);
       } catch (error) {
         console.error("Failed to fetch experiments:", error);
@@ -131,7 +136,7 @@ const PartitionBySelection = (props) => {
           /><br/>
           <FormControlLabel
             control={<Checkbox checked={props.partitionByUnitSelection} onChange={props.handleChange} name="partition_by_unit" />}
-            label="Partition output files by Pioreactor unit"
+            label="Partition output files by Pioreactor"
           />
         </Box>
       </FormControl>
@@ -282,7 +287,9 @@ const Datasets = ({ datasets, selectedDatasets, handleChange }) => {
   return (
     <Box sx={{ m: 1 }}>
       <FormControl component="fieldset">
-        <Typography variant="h6">Available datasets</Typography>
+        <Typography variant="h6" >
+          <Box fontWeight="fontWeightRegular">Available datasets</Box>
+        </Typography>
         <FormGroup>
           {datasets.map((dataset) => (
             <Dataset
@@ -445,6 +452,7 @@ function ExportDataContainer() {
             </LoadingButton>
           </Box>
         </Box>
+      <Divider sx={{marginTop: "0px", marginBottom: "15px"}} />
       </Box>
       <Card >
         <CardContent sx={{p: 1}}>
@@ -459,7 +467,9 @@ function ExportDataContainer() {
                 />
               </Grid>
               <Grid item xs={6} md={6}>
-                <Typography variant="h6">Export options</Typography>
+                <Typography variant="h6">
+                  <Box fontWeight="fontWeightRegular">Export options</Box>
+                </Typography>
                 <PartitionBySelection
                   partitionByUnitSelection={state.partitionByUnitSelection}
                   partitionByExperimentSelection={state.partitionByExperimentSelection}
@@ -475,13 +485,13 @@ function ExportDataContainer() {
               </Grid>
 
               <Grid item xs={0}/>
-              <Grid item xs={12}>
-                <p style={{textAlign: "center", marginTop: "30px"}}>Learn more about <a href="https://docs.pioreactor.com/user-guide/export-data" target="_blank" rel="noopener noreferrer">data exporting</a>.</p>
-              </Grid>
             </Grid>
           </form>
         </CardContent>
       </Card>
+      <Grid item xs={12}>
+        <p style={{textAlign: "center", marginTop: "30px"}}>Learn more about <a href="https://docs.pioreactor.com/user-guide/export-data" target="_blank" rel="noopener noreferrer">data exporting</a>.</p>
+      </Grid>
   </React.Fragment>
   )
 }

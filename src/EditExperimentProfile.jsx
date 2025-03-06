@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import yaml from "js-yaml";
 
 
-import FormControl from '@mui/material/FormControl';
 import Grid from "@mui/material/Grid";
 import Button from "@mui/material/Button";
 import {Typography} from '@mui/material';
@@ -11,11 +10,9 @@ import Card from '@mui/material/Card';
 import CardContent from '@mui/material/Card';
 import SaveIcon from '@mui/icons-material/Save';
 import TextField from '@mui/material/TextField';
-import InputAdornment from '@mui/material/InputAdornment';
-import { Link } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import Snackbar from '@mui/material/Snackbar';
-import { useSearchParams } from "react-router-dom";
 import Editor from 'react-simple-code-editor';
 import { highlight, languages } from 'prismjs';
 import 'prismjs/components/prism-yaml'; // You can add more languages or change it
@@ -45,7 +42,7 @@ function convertYamlToJson(yamlString){
   }
 }
 
-const EditExperimentProfilesContent = ({ initialCode, filename }) => {
+const EditExperimentProfilesContent = ({ initialCode, profileFilename }) => {
   const [code, setCode] = useState("");
   const [parsedCode, setParsedCode] = useState({});
   const [openSnackbar, setOpenSnackbar] = useState(false);
@@ -80,17 +77,12 @@ const EditExperimentProfilesContent = ({ initialCode, filename }) => {
   };
 
   const saveCurrentCode = () => {
-    if (filename === "") {
-      setIsError(true);
-      setErrorMsg("Filename can't be blank.");
-      return;
-    }
 
     setIsError(false);
     setIsChanged(false);
     fetch("/api/contrib/experiment_profiles", {
       method: "PATCH",
-      body: JSON.stringify({ body: code, filename: filename + '.yaml' }),
+      body: JSON.stringify({ body: code, filename: profileFilename  }),
       headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json'
@@ -99,11 +91,11 @@ const EditExperimentProfilesContent = ({ initialCode, filename }) => {
       .then(res => {
         if (res.ok) {
           setOpenSnackbar(true);
-          setSnackbarMsg(`Experiment profile ${filename}.yaml saved.`);
+          setSnackbarMsg(`Experiment profile ${profileFilename} saved.`);
         } else {
           res.json().then(parsedJson => {
-            setErrorMsg(parsedJson['msg']);
             setIsError(true);
+            setErrorMsg(parsedJson.error);
           });
         }
       });
@@ -125,7 +117,7 @@ const EditExperimentProfilesContent = ({ initialCode, filename }) => {
           <div style={{ width: "100%", margin: "10px", display: "flex", justifyContent: "space-between" }}>
             <TextField
               label="Filename"
-              value={filename + '.yaml'}
+              value={profileFilename }
               disabled={true}
               style={{ width: "350px" }}
             />
@@ -177,6 +169,7 @@ const EditExperimentProfilesContent = ({ initialCode, filename }) => {
               >
                 Save
               </Button>
+              {console.log(errorMsg, isError)}
               <p style={{ marginLeft: "10px" }}>{isError ? <Box color="error.main">{errorMsg}</Box> : ""}</p>
             </div>
           </div>
@@ -197,12 +190,11 @@ const EditExperimentProfilesContent = ({ initialCode, filename }) => {
 
 
 function ProfilesContainer(){
-  const [queryParams, setQueryParams] = useSearchParams();
+  const {profileFilename} = useParams();
   const [source, setSource] = React.useState('')
-  const filename = queryParams.get("profile")
 
   React.useEffect(() => {
-    fetch(`/api/contrib/experiment_profiles/${filename}`, {
+    fetch(`/api/contrib/experiment_profiles/${profileFilename}`, {
           method: "GET",
       }).then(res => {
         if (res.ok) {
@@ -225,7 +217,7 @@ function ProfilesContainer(){
       </Box>
       <Card sx={{marginTop: "15px"}}>
         <CardContent sx={{padding: "10px"}}>
-          <EditExperimentProfilesContent initialCode={source} filename={filename.split(".")[0]}/>
+          <EditExperimentProfilesContent initialCode={source} profileFilename={profileFilename}/>
           <p style={{textAlign: "center", marginTop: "30px"}}>Learn more about editing <a href="https://docs.pioreactor.com/user-guide/create-edit-experiment-profiles" target="_blank" rel="noopener noreferrer">experiment profile schemas</a>.</p>
         </CardContent>
       </Card>

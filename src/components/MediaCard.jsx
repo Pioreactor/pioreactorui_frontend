@@ -10,9 +10,11 @@ import TableCell from '@mui/material/TableCell';
 import TableContainer from '@mui/material/TableContainer';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
-
+import Chip from '@mui/material/Chip';
 import PioreactorIcon from "./PioreactorIcon"
+import PioreactorsIcon from "./PioreactorsIcon"
 import { useMQTT } from '../providers/MQTTContext';
+import { Link } from 'react-router-dom';
 
 
 function MediaCard({experiment, relabelMap, activeUnits}) {
@@ -88,15 +90,21 @@ function MediaCard({experiment, relabelMap, activeUnits}) {
 
   return (
     <Card style={{ marginBottom: '6px' }}>
-      <CardContent>
+      <CardContent sx={{ p: 2 }}>
         <Typography variant="h6" component="h2">
           <Box fontWeight="fontWeightRegular">Dosing</Box>
         </Typography>
-        <TableContainer style={{ width: '100%' }}>
+
+        {activeUnits.length === 0 && (
+            <p>No Pioreactors are currently assigned.</p>
+        )}
+
+        {activeUnits.length > 0 && (
+        <TableContainer sx={{ maxHeight: '400px', width: '100%', overflowY: 'auto' }}>
           <Table size="small" aria-label="media throughput">
             <TableHead>
               <TableRow>
-                <TableCell style={{ padding: '6px 0px' }}>Unit</TableCell>
+                <TableCell style={{ padding: '6px 0px' }}>Pioreactor</TableCell>
                 <TableCell style={{ padding: '6px 0px' }} align="right">
                   Media used
                 </TableCell>
@@ -106,35 +114,39 @@ function MediaCard({experiment, relabelMap, activeUnits}) {
               </TableRow>
             </TableHead>
             <TableBody>
-              <TableRow key="all">
-                <TableCell style={{ padding: '6px 0px' }} component="th" scope="row">
-                  <i>All Pioreactors</i>
-                </TableCell>
-                <TableCell align="right" style={{ fontSize: 13, padding: '6px 0px' }}>
-                  {(mediaThroughput || 0).toFixed(1)}mL (~{rates.all.mediaRate.toFixed(1)}mL/h)
-                </TableCell>
-                <TableCell align="right" style={{ fontSize: 13, padding: '6px 0px' }}>
-                  {(altMediaThroughput || 0).toFixed(1)}mL (~{rates.all.altMediaRate.toFixed(1)}mL/h)
-                </TableCell>
-              </TableRow>
 
               {activeUnits.map((unit) => (
                 <TableRow key={unit}>
                   <TableCell style={{ padding: '6px 0px' }} component="th" scope="row">
-                    <PioreactorIcon style={{ fontSize: 14, verticalAlign: 'middle' }} />
-                    {relabelUnit(unit)}
+                    <Chip size="small" icon={<PioreactorIcon/>} label={relabelUnit(unit)} clickable component={Link} to={"/pioreactors/" + unit} />
                   </TableCell>
                   <TableCell align="right" style={{ fontSize: 13, padding: '6px 0px' }}>
-                    {(mediaThroughputPerUnit[unit] || 0).toFixed(1)}mL (~{(rates[unit] ? rates[unit].mediaRate.toFixed(1) : '0.0')}mL/h)
+                    {(mediaThroughputPerUnit[unit] || 0).toFixed(1)}mL ({(rates[unit] ? rates[unit].mediaRate.toFixed(1) : '0.0')}mL/h)
                   </TableCell>
                   <TableCell align="right" style={{ fontSize: 13, padding: '6px 0px' }}>
-                    {(altMediaThroughputPerUnit[unit] || 0).toFixed(1)}mL (~{(rates[unit] ? rates[unit].altMediaRate.toFixed(1) : '0.0')}mL/h)
+                    {(altMediaThroughputPerUnit[unit] || 0).toFixed(1)}mL ({(rates[unit] ? rates[unit].altMediaRate.toFixed(1) : '0.0')}mL/h)
                   </TableCell>
                 </TableRow>
               ))}
+
+              {activeUnits.length > 1 &&
+              <TableRow key="all">
+                <TableCell style={{ padding: '6px 0px' }} component="th" scope="row">
+                  <Chip size="small" icon={<PioreactorsIcon/>} label="All assigned Pioreactors" sx={{backgroundColor: "white"}} />
+                </TableCell>
+                <TableCell align="right" style={{ fontSize: 13, padding: '6px 0px' }}>
+                  {(mediaThroughput || 0).toFixed(1)}mL ({rates.all.mediaRate.toFixed(1)}mL/h)
+                </TableCell>
+                <TableCell align="right" style={{ fontSize: 13, padding: '6px 0px' }}>
+                  {(altMediaThroughput || 0).toFixed(1)}mL ({rates.all.altMediaRate.toFixed(1)}mL/h)
+                </TableCell>
+              </TableRow>
+            }
+
             </TableBody>
           </Table>
         </TableContainer>
+        )}
       </CardContent>
     </Card>
   );

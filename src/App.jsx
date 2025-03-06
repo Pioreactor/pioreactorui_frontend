@@ -12,16 +12,20 @@ import ExportData from "./ExportData";
 import Pioreactors from "./Pioreactors";
 import Pioreactor from "./Pioreactor";
 import StartNewExperiment from "./StartNewExperiment";
+import SingleCalibrationPage from "./SingleCalibrationPage";
 import CreateExperimentProfile from "./CreateExperimentProfile";
 import EditExperimentProfile from "./EditExperimentProfile";
 import EditConfig from "./EditConfig";
 import Updates from "./Updates";
 import Plugins from "./Plugins";
-import Profiles from "./Profiles";
 import Webcam from "./Webcam";
+import {Profiles} from "./Profiles";
 import Inventory from "./Inventory";
+import Leader from "./Leader";
+import Logs from "./Logs";
 //import Analysis from "./Analysis";
 import Experiments from "./Experiments";
+import Calibrations from "./Calibrations";
 import SideNavAndHeader from "./components/SideNavAndHeader";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ConfirmProvider } from 'material-ui-confirm';
@@ -114,14 +118,22 @@ function MainSite() {
                   <Route path="/plugins" element={<Plugins title="Pioreactor ~ Plugins"/>}/>
                   <Route path="/experiments" element={<Experiments title="Pioreactor ~ Past experiments"/>}/>
                   <Route path="/experiment-profiles" element={<Profiles title="Pioreactor ~ Experiment profiles"/>}/>
-                  <Route path="/create-experiment-profile" element={<CreateExperimentProfile title="Pioreactor ~ Create experiment profile"/>}/>
-                  <Route path="/edit-experiment-profile" element={<EditExperimentProfile title="Pioreactor ~ Edit experiment profile"/>}/>
+                  <Route path="/experiment-profiles/:profileFilename/" element={<Profiles title="Pioreactor ~ Experiment profiles"/>}/>
+                  <Route path="/experiment-profiles/new" element={<CreateExperimentProfile title="Pioreactor ~ Create experiment profile"/>}/>
+                  <Route path="/experiment-profiles/:profileFilename/edit" element={<EditExperimentProfile title="Pioreactor ~ Edit experiment profile"/>}/>
                   <Route path="/webcam" element={<Webcam title="Pioreactor ~ Webcam"/>}/>
                   <Route path="/config" element={<EditConfig title="Pioreactor ~ Configuration"/>}/>
+                  <Route path="/leader" element={<Leader title="Pioreactor ~ Leader"/>}/>
+                  <Route path="/calibrations" element={<Calibrations title="Pioreactor ~ Calibrations"/>}/>
+                  <Route path="/calibrations/:pioreactor_unit/" element={<Calibrations title="Pioreactor ~ Calibrations"/>}/>
+                  <Route path="/calibrations/:pioreactor_unit/:device" element={<Calibrations title="Pioreactor ~ Calibrations"/>}/>
+                  <Route path="/calibrations/:pioreactor_unit/:device/:calibration_name" element={<SingleCalibrationPage title="Pioreactor ~ Calibration"/>}/>
                   <Route path="/pioreactors" element={ <Pioreactors title="Pioreactor ~ Pioreactors"/>}/>
                   <Route path="/pioreactors/:unit" element={ <Pioreactor title="Pioreactor ~ Pioreactor"/>}/>
                   <Route path="/updates" element={<Updates title="Pioreactor ~ Updates"/>}/>
                   <Route path="/inventory" element={<Inventory title="Pioreactor ~ Inventory"/>}/>
+                  <Route path="/logs" element={<Logs title="Pioreactor ~ Logs"/>}/>
+                  <Route path="/logs/:unit" element={<Logs title="Pioreactor ~ Logs"/>}/>
                   <Route path="/" element={<ExperimentOverview title="Pioreactor ~ Overview"/>}/>
                   <Route path="*" element={<NotFound />} />
                 </Routes>

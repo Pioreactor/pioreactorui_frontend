@@ -19,7 +19,7 @@ import 'prismjs/components/prism-ini';
 import dayjs from "dayjs";
 
 
-function EditableCodeDiv(props) {
+function EditableCodeDiv() {
   const [state, setState] = useState({
     code: null,
     openSnackbar: false,
@@ -66,7 +66,7 @@ function EditableCodeDiv(props) {
         setState(prev => ({ ...prev, snackbarMsg: `Success: ${state.filename} saved and synced.`, hasChangedSinceSave: false, saving: false, openSnackbar: true }));
       } else {
         res.json().then(parsedJson =>
-          setState(prev => ({ ...prev, errorMsg: parsedJson['msg'], isError: true, hasChangedSinceSave: true, saving: false }))
+          setState(prev => ({ ...prev, errorMsg: parsedJson.error, isError: true, hasChangedSinceSave: true, saving: false }))
         )
       }
     });
@@ -78,6 +78,7 @@ function EditableCodeDiv(props) {
   }, []);
 
   useEffect(() => {
+    // what's up with the ignore? https://react.dev/learn/synchronizing-with-effects#fetching-data
     let ignore = false;
 
     async function getConfigs() {
@@ -169,8 +170,8 @@ function EditableCodeDiv(props) {
             position: "relative",
             width: "98%",
             borderRadius: "4px",
-            height: "320px",
-            maxHeight: "320px",
+            height: "360px",
+            maxHeight: "360px",
             overflow: "auto",
             flex: 1
         }}>
@@ -238,9 +239,9 @@ function EditConfigContainer(){
         <CardContent sx={{p: 1}}>
           <EditableCodeDiv/>
 
-          <p style={{textAlign: "center", marginTop: "30px"}}>Learn more about Pioreactor  <a href="https://docs.pioreactor.com/user-guide/configuration" target="_blank" rel="noopener noreferrer">configuration</a>.</p>
         </CardContent>
       </Card>
+      <p style={{textAlign: "center", marginTop: "30px"}}>Learn more about Pioreactor  <a href="https://docs.pioreactor.com/user-guide/configuration" target="_blank" rel="noopener noreferrer">configuration</a>.</p>
     </React.Fragment>
 )}
 
