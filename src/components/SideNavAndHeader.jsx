@@ -23,6 +23,7 @@ import DashboardOutlinedIcon from '@mui/icons-material/DashboardOutlined';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import InsertChartOutlinedIcon from '@mui/icons-material/InsertChartOutlined';
 import ViewTimelineOutlinedIcon from '@mui/icons-material/ViewTimelineOutlined';
+import VideocamOutlinedIcon from '@mui/icons-material/VideocamOutlined';
 import ChatOutlinedIcon from '@mui/icons-material/ChatOutlined';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Sidebar, Menu, MenuItem, SubMenu} from "react-pro-sidebar";
@@ -308,6 +309,18 @@ export default function SideNavAndHeader() {
                 Profiles
               </MenuItem>
 
+<<<<<<< HEAD
+              <MenuItem
+                icon={
+                      <VideocamOutlinedIcon/>
+                  }
+                component={<Link to="/webcam" className="link" />}
+                active={isSelected("/webcam")}
+                >
+                Webcams
+              </MenuItem>
+=======
+>>>>>>> main
 
             <Divider sx={{marginTop: "15px", marginBottom: "15px"}} />
           </Menu>

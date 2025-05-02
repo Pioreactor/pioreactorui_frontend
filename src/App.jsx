@@ -18,6 +18,7 @@ import EditExperimentProfile from "./EditExperimentProfile";
 import EditConfig from "./EditConfig";
 import Updates from "./Updates";
 import Plugins from "./Plugins";
+import Webcam from "./Webcam";
 import {Profiles} from "./Profiles";
 import Inventory from "./Inventory";
 import Leader from "./Leader";
@@ -121,6 +122,7 @@ function MainSite() {
                   <Route path="/experiment-profiles/:profileFilename/" element={<Profiles title="Pioreactor ~ Experiment profiles"/>}/>
                   <Route path="/experiment-profiles/new" element={<CreateExperimentProfile title="Pioreactor ~ Create experiment profile"/>}/>
                   <Route path="/experiment-profiles/:profileFilename/edit" element={<EditExperimentProfile title="Pioreactor ~ Edit experiment profile"/>}/>
+                  <Route path="/webcam" element={<Webcam title="Pioreactor ~ Webcam"/>}/>
                   <Route path="/config" element={<EditConfig title="Pioreactor ~ Configuration"/>}/>
                   <Route path="/leader" element={<Leader title="Pioreactor ~ Leader"/>}/>
                   <Route path="/calibrations" element={<Calibrations title="Pioreactor ~ Calibrations"/>}/>
