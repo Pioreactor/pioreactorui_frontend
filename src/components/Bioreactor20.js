@@ -51,6 +51,8 @@ const Bioreactor20Diagram = ({experiment, unit, config}) => {
   const [pumps, setPumps] = useState(new Set([]));
   const [heat, setHeat] = useState(false);
   const [volume, setVolume] = useState(14);
+  const [maxVolume, setMaxVolume] = useState(Math.min(20, (config?.bioreactor?.max_working_volume_ml || 14)));
+
   var  now, then, elapsed;
   const fps = 45;
   const fpsInterval = 1000 / fps;
@@ -58,13 +60,14 @@ const Bioreactor20Diagram = ({experiment, unit, config}) => {
 
   useEffect(() => {
     if (Object.keys(config).length){
-      setVolume(config?.bioreactor?.initial_volume_ml)
+      setVolume(Math.min(config?.bioreactor?.initial_volume_ml, 20))
     }
   }, [config])
 
 
 
   function onMessage(topic, message) {
+    if (!message || !topic) return;
 
     const topicString = topic.toString()
     const messageString = message.toString()
@@ -93,7 +96,7 @@ const Bioreactor20Diagram = ({experiment, unit, config}) => {
         switch (load){
           case "stirring":
             const rpm_estimate = parseFloat(dcs[pin]) * 26.66666667
-            rpm_ = Math.max(Math.min(100, rpm_estimate), 600)//
+            rpm_ = Math.min(Math.max(rpm_estimate, 100), 600)
             break
           case "media":
             pumps_.add('media')
@@ -127,18 +130,18 @@ const Bioreactor20Diagram = ({experiment, unit, config}) => {
       } else {
         setNOD(JSON.parse(messageString).od_filtered)
       }
-    } else if (topicString.endsWith("dosing_automation/liquid_volume")){
+    } else if (topicString.endsWith("dosing_automation/current_volume_ml")){
       if (messageString === "") {
         //
       } else {
-        setVolume(parseFloat(messageString))
+        setVolume(Math.min(20, parseFloat(messageString)))
       }
-    //} else if (topicString.endsWith("temperature_automation/automation_name")){
-      // if (messageString === "") {
-      //   setHeat(false)
-      // } else {
-      //   setHeat(messageString!=="only_record_temperature")
-      // }
+    } else if (topicString.endsWith("dosing_automation/max_working_volume_ml")){
+      if (messageString === "") {
+        //
+      } else {
+        setMaxVolume(Math.min(parseFloat(messageString), 20))
+      }
     } else if (topicString.endsWith("leds/intensity")){
       if (messageString === "") {
         setLeds({A: 0, B: 0, C: 0, D: 0})
@@ -149,28 +152,30 @@ const Bioreactor20Diagram = ({experiment, unit, config}) => {
   }
 
   useEffect(() => {
-    if (client && experiment){
+    if (client && experiment && config && Object.keys(config).length > 0){
       subscribeToTopic([`pioreactor/${unit}/${experiment}/temperature_automation/temperature`,
         `pioreactor/${unit}/${experiment}/growth_rate_calculating/od_filtered`,
         `pioreactor/${unit}/${experiment}/leds/intensity`,
-        `pioreactor/${unit}/${experiment}/dosing_automation/liquid_volume`,
+        `pioreactor/${unit}/${experiment}/dosing_automation/current_volume_ml`,
+        `pioreactor/${unit}/${experiment}/dosing_automation/max_working_volume_ml`,
         `pioreactor/${unit}/${experiment}/pwms/dc`,
         `pioreactor/${unit}/_testing_${experiment}/temperature_automation/temperature`,
         `pioreactor/${unit}/_testing_${experiment}/growth_rate_calculating/od_filtered`,
         `pioreactor/${unit}/_testing_${experiment}/leds/intensity`,
-        `pioreactor/${unit}/_testing_${experiment}/dosing_automation/liquid_volume`,
+        `pioreactor/${unit}/_testing_${experiment}/dosing_automation/current_volume_ml`,
+        `pioreactor/${unit}/_testing_${experiment}/dosing_automation/max_working_volume_ml`,
         `pioreactor/${unit}/_testing_${experiment}/pwms/dc`,
       ], onMessage, "BioreactorDiagram")
 
     }
-  }, [client, experiment])
+  }, [client, experiment, config]) // config is needed for the onmessage
 
   useEffect(() => {
     let animationFrameId;
     const canvas = canvasRef.current;
     const ctx = canvas.getContext('2d');
     const liquidLevel = volume / 20 * bioreactor.height
-    const bottomOfWasteTube = bioreactor.height - (config?.bioreactor?.max_volume_ml || 14) / 20 *  bioreactor.height + 20
+    const bottomOfWasteTube = bioreactor.height - maxVolume / 20 * bioreactor.height + 20
 
     const ledsRects = [
       { text: 'B', x: 50,  y: 350, width: 40, height: 30, radius: 5 },

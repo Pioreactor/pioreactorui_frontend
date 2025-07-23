@@ -7,11 +7,11 @@ import Button from "@mui/material/Button";
 import {Typography} from '@mui/material';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
-import CardContent from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
 import SaveIcon from '@mui/icons-material/Save';
 import TextField from '@mui/material/TextField';
 import InputAdornment from '@mui/material/InputAdornment';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import Snackbar from '@mui/material/Snackbar';
 import Editor from 'react-simple-code-editor';
@@ -51,9 +51,14 @@ metadata:
 `;
   const DEFAULT_FILENAME = "";
 
-  const [code, setCode] = useState(DEFAULT_CODE);
-  const [filename, setFilename] = useState(DEFAULT_FILENAME);
-  const [parsedCode, setParsedCode] = useState(convertYamlToJson(DEFAULT_CODE));
+  const location = useLocation();
+  const { initialCode: locInitialCode, initialFilename: locInitialFilename } = location.state || {};
+  const startingCode = locInitialCode ?? DEFAULT_CODE;
+  const startingFilename = locInitialFilename ?? DEFAULT_FILENAME;
+
+  const [code, setCode] = useState(startingCode);
+  const [filename, setFilename] = useState(startingFilename);
+  const [parsedCode, setParsedCode] = useState(convertYamlToJson(startingCode));
   const [openSnackbar, setOpenSnackbar] = useState(false);
   const [snackbarMsg, setSnackbarMsg] = useState("");
   const [isChanged, setIsChanged] = useState(false);
@@ -87,7 +92,6 @@ metadata:
     }
 
     setIsError(false);
-    setIsChanged(false);
     fetch("/api/contrib/experiment_profiles", {
       method: "POST",
       body: JSON.stringify({ body: code, filename: filename + '.yaml' }),
@@ -97,16 +101,19 @@ metadata:
       }
     })
       .then(res => {
-        if (res.ok) {
-          setOpenSnackbar(true);
-          setSnackbarMsg(`Experiment profile ${filename}.yaml saved.`);
-        } else {
-          res.json().then(parsedJson => {
-            setIsError(true);
-            setErrorMsg(parsedJson.error);
-            setIsChanged(true);
+        if (!res.ok) {
+          return res.json().then(parsedJson => {
+            throw new Error(parsedJson.error || 'Failed to save profile');
           });
         }
+        setIsChanged(false);
+        setOpenSnackbar(true);
+        setSnackbarMsg(`Experiment profile ${filename}.yaml saved.`);
+      })
+      .catch(err => {
+        setIsError(true);
+        setErrorMsg(err.message || 'Network error: failed to save profile');
+        setIsChanged(true);
       });
   };
 
@@ -122,7 +129,7 @@ metadata:
   return (
     <>
       <Grid container spacing={0}>
-        <Grid item xs={12}>
+        <Grid size={12}>
           <div style={{ width: "100%", margin: "10px", display: "flex", justifyContent: "space-between" }}>
             <FormControl>
               <TextField
@@ -130,7 +137,7 @@ metadata:
                 onChange={onFilenameChange}
                 required
                 value={filename}
-                style={{ width: "250px" }}
+                style={{ width: "320px" }}
                 InputProps={{
                   endAdornment: <InputAdornment position="end">.yaml</InputAdornment>,
                 }}
@@ -138,7 +145,7 @@ metadata:
             </FormControl>
           </div>
         </Grid>
-        <Grid item xs={6}>
+        <Grid size={6}>
           <div style={{
             tabSize: "4ch",
             border: "1px solid #ccc",
@@ -166,11 +173,11 @@ metadata:
           </div>
         </Grid>
 
-        <Grid item xs={6}>
+        <Grid size={6}>
           {code && displayedProfile()}
         </Grid>
 
-        <Grid item xs={12}>
+        <Grid size={12}>
           <div style={{ display: "flex", justifyContent: "space-between" }}>
             <div>
               <Button
@@ -228,12 +235,16 @@ function CreateNewProfile(props) {
       document.title = props.title;
     }, [props.title]);
     return (
-        <Grid container spacing={2} >
-          <Grid item md={12} xs={12}>
-            <ProfilesContainer />
-          </Grid>
+      <Grid container spacing={2} >
+        <Grid
+          size={{
+            md: 12,
+            xs: 12
+          }}>
+          <ProfilesContainer />
         </Grid>
-    )
+      </Grid>
+    );
 }
 
 export default CreateNewProfile;

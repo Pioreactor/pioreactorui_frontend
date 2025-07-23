@@ -57,10 +57,15 @@ export function getRelabelMap(setCallback, experiment="current") {
 
 
 
-export function runPioreactorJob(unit, experiment, job, args = [], options = {}, skipEnv=false) {
+export function runPioreactorJob(unit, experiment, job, args = [], options = {}, configOverrides={}, skipEnv=false) {
     return fetch(`/api/workers/${unit}/jobs/run/job_name/${job}/experiments/${experiment}`, {
       method: "PATCH",
-      body: JSON.stringify({ args: args, options: options, env: (!skipEnv) ? {EXPERIMENT: experiment, JOB_SOURCE: "user"} : {} }),
+      body: JSON.stringify({
+        args: args,
+        options: options,
+        env: (!skipEnv) ? {EXPERIMENT: experiment, JOB_SOURCE: "user"} : {},
+        config_overrides: Object.entries(configOverrides).map( ( [parameter, value] ) => [`${job}.config`, parameter, value]),
+      }),
       headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json'
@@ -100,7 +105,7 @@ export function runPioreactorJobViaUnitAPI(job, args = [], options = {}) {
 }
 
 
-export class DefaultDict {
+export class ColorCycler {
   constructor(colors) {
     this.colors = colors;
     this.index = 0;
@@ -150,8 +155,8 @@ export const colors = [
 
 ];
 
-export const ERROR_COLOR = "#ff7961"
-export const WARNING_COLOR = "#FFEA8A"
+export const ERROR_COLOR = "#FF8F7B"
+export const WARNING_COLOR = "#ffefa4"
 export const NOTICE_COLOR = "#addcaf"
 
 
@@ -167,12 +172,12 @@ export async function checkTaskCallback(callbackURL, {maxRetries = 100, delayMs 
     }
     // If not 200, wait, decrement retry count, try again
     await new Promise((resolve) => setTimeout(resolve, delayMs));
-    return checkTaskCallback(callbackURL, maxRetries - 1, delayMs);
+    return checkTaskCallback(callbackURL, {maxRetries: maxRetries - 1, delayMs});
   } catch (err) {
     console.error('Error fetching callback:', err);
     // Wait, decrement retry count, try again
     await new Promise((resolve) => setTimeout(resolve, delayMs));
-    return checkTaskCallback(callbackURL, maxRetries - 1, delayMs);
+    return checkTaskCallback(callbackURL, {maxRetries: maxRetries - 1, delayMs});
   }
 }
 
@@ -192,3 +197,23 @@ export const stateDisplay = {
   "lost":          {display: "Lost", color: lostRed, backgroundColor: null},
   "NA":            {display: "Not available", color: disconnectedGrey, backgroundColor: null},
 }
+
+export function objectWithDefaultEmpty(obj) {
+  /**
+   * Wraps an object in a Proxy that returns an empty object `{}`
+   * when accessing a missing top-level key, instead of `undefined`.
+   *
+   * Useful for safely reading from objects of objects without having to check
+   * for existence before access.
+   *
+  **/
+  return new Proxy(obj, {
+    get(target, key) {
+      if (key in target) {
+        return target[key];
+      }
+      return {}; // return empty object for missing keys
+    }
+  });
+}
+

@@ -36,6 +36,7 @@ import InsertDriveFileOutlinedIcon from '@mui/icons-material/InsertDriveFileOutl
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { styled } from '@mui/material/styles';
 import Chip from '@mui/material/Chip';
+import PioreactorIconWithModel from "./components/PioreactorIconWithModel"
 import PioreactorIcon from "./components/PioreactorIcon"
 
 // Activate the UTC plugin
@@ -202,12 +203,12 @@ function DirectoryNavigatorCard() {
   };
 
   return (
-    <Card sx={{minHeight: "300px", maxHeight: "600px", overflowY: "scroll"}}>
+    <Card sx={{minHeight: "300px"}}>
       <CardContent sx={{p:2}}>
-         <Typography variant="h6" component="h2">
+        <Typography variant="h6" component="h2">
           <Box fontWeight="fontWeightRegular">File browser</Box>
         </Typography>
-
+        <Box sx={{maxHeight: "450px", overflowY: "scroll"}}>
           <PathViewer path=
           {
           currentPath
@@ -257,7 +258,7 @@ function DirectoryNavigatorCard() {
             ))}
           </List>
         )}
-
+        </Box>
       </CardContent>
     </Card>
   );
@@ -284,6 +285,8 @@ function LeaderCard({leaderHostname}) {
 
 
   const onMonitorData = (topic, message) => {
+    if (!message || !topic) return;
+
     const setting = topic.toString().split('/').pop()
     switch (setting) {
       case "$state":
@@ -370,7 +373,7 @@ function LeaderCard({leaderHostname}) {
                 fontWeight: 500,
               }}
               gutterBottom>
-              <PioreactorIcon  sx={{verticalAlign: "middle", mr: "3px", mb: "2px"}} />
+              <PioreactorIconWithModel badgeContent={"★"}  sx={{verticalAlign: "middle", mr: "3px", mb: "2px"}} />
               {unit}
             </Typography>
             <Tooltip title={indicatorLabel} placement="right">
@@ -394,14 +397,6 @@ function LeaderCard({leaderHostname}) {
             </td>
             <td >
               <code style={{backgroundColor: "rgba(0, 0, 0, 0.07)", padding: "1px 4px"}}>{softwareVersion()}</code>
-            </td>
-          </tr>
-          <tr>
-            <td style={{textAlign: "left", minWidth: "120px", color: ""}}>
-                UI version
-            </td>
-            <td >
-              <code style={{backgroundColor: "rgba(0, 0, 0, 0.07)", padding: "1px 4px"}}>{uiVersion()}</code>
             </td>
           </tr>
           <tr>
@@ -692,25 +687,58 @@ function LeaderContainer({config}) {
         <Divider sx={{marginTop: "0px", marginBottom: "15px"}} />
 
       </Box>
-
       <Grid container spacing={2} justifyContent="flex-start" alignItems="flex-start">
-        <Grid item md={5} xs={12} sm={12} container spacing={2}>
-          <Grid item xs={12} sm={12}>
+        <Grid
+          container
+          spacing={2}
+          size={{
+            md: 5,
+            xs: 12,
+            sm: 12
+          }}>
+          <Grid
+            size={{
+              xs: 12,
+              sm: 12
+            }}>
             <LeaderCard leaderHostname={leaderHostname}/>
           </Grid>
-          <Grid item xs={12} sm={12}>
+          <Grid
+            size={{
+              xs: 12,
+              sm: 12
+            }}>
             <LeaderJobs/>
           </Grid>
-          <Grid item xs={12} sm={12}>
+          <Grid
+            size={{
+              xs: 12,
+              sm: 12
+            }}>
             <ClusterClockCard leaderHostname={leaderHostname}/>
           </Grid>
         </Grid>
 
-        <Grid item md={7} xs={12} sm={12} container spacing={2}  >
-          <Grid item xs={12} sm={12}>
+        <Grid
+          container
+          spacing={2}
+          size={{
+            md: 7,
+            xs: 12,
+            sm: 12
+          }}>
+          <Grid
+            size={{
+              xs: 12,
+              sm: 12
+            }}>
             <DirectoryNavigatorCard/>
           </Grid>
-          <Grid item xs={12} sm={12}>
+          <Grid
+            size={{
+              xs: 12,
+              sm: 12
+            }}>
             <LogTableByUnit experiment="$experiment" unit={leaderHostname} level="debug"/>
           </Grid>
         </Grid>
@@ -734,7 +762,11 @@ function Leader({title}) {
   return (
     <MQTTProvider name="leader" config={config}>
       <Grid container spacing={2}>
-        <Grid item md={12} xs={12}>
+        <Grid
+          size={{
+            md: 12,
+            xs: 12
+          }}>
           <LeaderContainer config={config}/>
         </Grid>
       </Grid>

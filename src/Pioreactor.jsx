@@ -8,7 +8,7 @@ import { styled } from '@mui/material/styles';
 
 import Chip from '@mui/material/Chip';
 import Card from '@mui/material/Card';
-import CardContent from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
 import {Typography} from '@mui/material';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
@@ -41,11 +41,14 @@ import {Link, useParams, useNavigate} from 'react-router-dom'
 
 import SelfTestDialog from "./components/SelfTestDialog"
 import ChangeAutomationsDialog from "./components/ChangeAutomationsDialog"
+import ChangeDosingAutomationsDialog from "./components/ChangeDosingAutomationsDialog"
+import AdvancedConfigButton from "./components/AdvancedConfigDialog"
 import ActionDosingForm from "./components/ActionDosingForm"
 import ActionManualDosingForm from "./components/ActionManualDosingForm"
 import ActionCirculatingForm from "./components/ActionCirculatingForm"
 import ActionLEDForm from "./components/ActionLEDForm"
 import PioreactorIcon from "./components/PioreactorIcon"
+import PioreactorIconWithModel from "./components/PioreactorIconWithModel"
 import UnderlineSpan from "./components/UnderlineSpan";
 import Bioreactor40Diagram from "./components/Bioreactor40";
 import Bioreactor20Diagram from "./components/Bioreactor20";
@@ -104,8 +107,7 @@ const RowOfUnitSettingDisplayBox  = styled(Box)(({ theme }) => ({
 }));
 
 
-function TabPanel(props) {
-  const { children, value, index, ...other } = props;
+function TabPanel({ children, value, index, ...other }) {
 
   return (
     <div
@@ -123,19 +125,15 @@ function TabPanel(props) {
   );
 }
 
-function UnitSettingDisplaySubtext(props){
-
-  if (props.subtext){
-    return <Chip size="small" sx={{fontSize: "11px", wordBreak: "break-word", padding: "5px 0px"}} label={props.subtext.replaceAll("_", " ")} />
+function UnitSettingDisplaySubtext({ subtext }) {
+  if (subtext) {
+    return <Chip size="small" sx={{fontSize: "11px", wordBreak: "break-word", padding: "5px 0px"}} label={subtext.replaceAll("_", " ")} />;
   }
-  else{
-    return <Box sx={{minHeight: "15px"}}></Box>
-  };
+  return <Box sx={{minHeight: "15px"}} />;
 }
 
 
 function UnitSettingDisplay(props) {
-  console.log(props)
   const value = props.value === null ?  ""  : props.value
 
   function prettyPrint(x){
@@ -288,16 +286,25 @@ function ButtonStopProcess({experiment, unit}) {
 
   return (
     <Button style={{textTransform: 'none', float: "right" }} color="secondary" onClick={handleClick}>
-      <ClearIcon fontSize="15" sx={textIcon}/> Stop all activity
+      <ClearIcon fontSize="small" sx={textIcon}/> Stop all activity
     </Button>
   );
 }
 
 
+function modelStringFromModelNameAndModelVersion(modelName, modelVersion){
+  if (modelName === "pioreactor_20ml"){
+    return `Pioreactor 20ml, v${modelVersion}`
+  } else if (modelName === "pioreactor_40ml"){
+    return `Pioreactor 40ml, v${modelVersion}`
+  } else {
+    return "Unknown model"
+  }
+}
 
 
 
-function PioreactorHeader({unit, assignedExperiment, isActive, selectExperiment}) {
+function PioreactorHeader({unit, assignedExperiment, isActive, selectExperiment, modelName, modelVersion}) {
   const navigate = useNavigate()
 
   const onExperimentClick = () => {
@@ -309,11 +316,11 @@ function PioreactorHeader({unit, assignedExperiment, isActive, selectExperiment}
     <Box>
       <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
         <Typography variant="h5" component="h1">
-        <Box sx={{display:"inline"}}>
-          <Button to={`/pioreactors`} component={Link} sx={{ textTransform: 'none' }}>
-            <ArrowBackIcon sx={{ verticalAlign: "middle", mr: 0.5 }} fontSize="small"/> All assigned Pioreactors
-          </Button>
-        </Box>
+          <Box sx={{display:"inline"}}>
+            <Button to={`/pioreactors`} component={Link} sx={{ textTransform: 'none' }}>
+              <ArrowBackIcon sx={{ verticalAlign: "middle", mr: 0.5 }} fontSize="small"/> All assigned Pioreactors
+            </Button>
+          </Box>
         </Typography>
         <Box sx={{display: "flex", flexDirection: "row", justifyContent: "flex-start", flexFlow: "wrap"}}>
           <ButtonStopProcess experiment={assignedExperiment} unit={unit}/>
@@ -341,6 +348,14 @@ function PioreactorHeader({unit, assignedExperiment, isActive, selectExperiment}
                 {isActive ? "Active" : "Inactive"}
               </Box>
             </Box>
+            <Box sx={{display:"inline"}}>
+              <Box fontWeight="fontWeightBold" sx={{display:"inline-block"}}>
+                <PioreactorIcon sx={{ fontSize: 14, verticalAlign: "-2px" }}/> Model:&nbsp;
+              </Box>
+              <Box fontWeight="fontWeightRegular" sx={{mr: "1%", display:"inline-block"}}>
+                {modelStringFromModelNameAndModelVersion(modelName, modelVersion)}
+              </Box>
+            </Box>
 
           </Typography>
         </Box>
@@ -352,29 +367,34 @@ function PioreactorHeader({unit, assignedExperiment, isActive, selectExperiment}
 
 
 
-function CalibrateDialog(props) {
+function CalibrateDialog({ unit, experiment, odBlankReading, odBlankJobState, growthRateJobState, disabled, label }) {
   const [open, setOpen] = useState(false);
   const [tabValue, setTabValue] = useState(0);
-  const [activeCalibrations, setActiveCalibrations] = useState({})
+  const [activeCalibrations, setActiveCalibrations] = useState({});
+  const [loadingCalibrations, setLoadingCalibrations] = useState(false);
 
   useEffect(() => {
     if (!open) return;
 
-    const apiUrl = `/api/workers/${props.unit}/active_calibrations`;
+    setLoadingCalibrations(true)
+
+    const apiUrl = `/api/workers/${unit}/active_calibrations`;
 
     const fetchCalibrations = async () => {
       try {
         const response = await fetch(apiUrl);
         const firstResponse = await response.json();
         const data = await checkTaskCallback(firstResponse.result_url_path, {delayMs: 2000})
-        setActiveCalibrations(data.result[props.unit]);
+        setActiveCalibrations(data.result[unit]);
+        setLoadingCalibrations(false);
+
       } catch (err) {
         console.error("Failed to fetch calibration:", err);
       }
     };
 
     fetchCalibrations();
-  }, [open, props.unit] )
+  }, [open, unit] )
 
 
   const handleTabChange = (event, newValue) => {
@@ -410,7 +430,7 @@ function CalibrateDialog(props) {
                <PatientButton
                 color="primary"
                 variant="contained"
-                onClick={() => runPioreactorJob(props.unit, props.experiment, job)}
+                onClick={() => runPioreactorJob(unit, experiment, job)}
                 buttonText="Start"
                 disabled={always_disable}
                />
@@ -418,19 +438,19 @@ function CalibrateDialog(props) {
     }
    }
 
-  const isGrowRateJobRunning = props.growthRateJobState === "ready"
+  const isGrowRateJobRunning = growthRateJobState === "ready"
   const hasActiveODCalibration = "od" in (activeCalibrations || {})
-  const blankODButton = createUserButtonsBasedOnState(props.odBlankJobState, "od_blank", (isGrowRateJobRunning || hasActiveODCalibration))
+  const blankODButton = createUserButtonsBasedOnState(odBlankJobState, "od_blank", (isGrowRateJobRunning || hasActiveODCalibration))
 
   return (
     <React.Fragment>
-      <Button style={{textTransform: 'none', float: "right" }} color="primary" disabled={props.disabled} onClick={handleClickOpen}>
-        <TuneIcon color={props.disabled ? "disabled" : "primary"} fontSize="15" sx={textIcon}/> Calibrate
+      <Button style={{textTransform: 'none', float: "right" }} color="primary" disabled={disabled} onClick={handleClickOpen}>
+        <TuneIcon color={disabled ? "disabled" : "primary"} fontSize="small" sx={textIcon}/> Calibrate
       </Button>
       <Dialog open={open} onClose={handleClose} aria-labelledby="form-dialog-title">
         <DialogTitle>
           <Typography sx={{fontSize: "13px", color: "rgba(0, 0, 0, 0.60)",}}>
-            <PioreactorIcon style={{verticalAlign: "middle", fontSize: "1.2em"}}/> {(props.label) ? `${props.label} / ${props.unit}` : `${props.unit}`}
+            <PioreactorIcon style={{verticalAlign: "middle", fontSize: "1.2em"}}/> {(label) ? `${label} / ${unit}` : `${unit}`}
           </Typography>
           <Tabs
             value={tabValue}
@@ -464,7 +484,7 @@ function CalibrateDialog(props) {
               media's <i>un-inoculated</i> optical density <i>per experiment</i>. Read more about <a href="https://docs.pioreactor.com/user-guide/od-normal-growth-rate#blanking">using blanks</a>. If your Pioreactor has an active OD calibration, this isn't required.
             </Typography>
             <Typography variant="body2" component="p" style={{margin: "20px 0px"}}>
-              Recorded optical densities of blank vial: <code>{props.odBlankReading ? Object.entries(JSON.parse(props.odBlankReading)).map( ([k, v]) => `${k}:${v.toFixed(5)}` ).join(", ") : "—"}</code>
+            Recorded optical densities of blank vial: <code>{odBlankReading ? Object.entries(JSON.parse(odBlankReading)).map( ([k, v]) => `${k}:${v.toFixed(5)}` ).join(", ") : "—"}</code>
             </Typography>
 
             <div style={{display: "flex"}}>
@@ -479,7 +499,7 @@ function CalibrateDialog(props) {
                 </div>
               }
               <div>
-                <Button size="small" sx={{width: "70px", mt: "5px", height: "31px", mr: '3px'}} color="secondary" disabled={(props.odBlankReading === null) || (isGrowRateJobRunning)} onClick={() => runPioreactorJob(props.unit, props.experiment, "od_blank", ['delete']) }> Clear </Button>
+                <Button size="small" sx={{width: "70px", mt: "5px", height: "31px", mr: '3px'}} color="secondary" disabled={(odBlankReading === null) || (isGrowRateJobRunning)} onClick={() => runPioreactorJob(unit, experiment, "od_blank", ['delete']) }> Clear </Button>
               </div>
             </div>
             <ManageDivider/>
@@ -493,15 +513,17 @@ function CalibrateDialog(props) {
               Below are the active calibrations that will be used when running devices like pumps, stirring, etc. Read more about{' '}
               <a href="https://docs.pioreactor.com/user-guide/hardware-calibrations">calibrations</a>.
             </Typography>
-
-            {Object.entries(activeCalibrations || {}).length === 0 ? (
+            {loadingCalibrations ? (
+              <Box sx={{ textAlign: 'center', marginTop: '2rem' }}>
+                <CircularProgress />
+              </Box>
+            ) : Object.entries(activeCalibrations || {}).length === 0 ? (
               // Empty state message when there are no active calibrations.
-              <Typography variant="body2" component="p" color="textSecondary" sx={{mt: 3}}>
-                There are no active calibrations available.
-              </Typography>
+              (<Typography variant="body2" component="p" color="textSecondary" sx={{ mt: 3 }}>There are no active calibrations available.
+                              </Typography>)
             ) : (
               // Table rendering when active calibrations exist.
-              <Table size="small">
+              (<Table size="small">
                 <TableHead>
                   <TableRow>
                     <TableCell align="left" sx={{ padding: '6px 0px' }}>Device</TableCell>
@@ -524,7 +546,8 @@ function CalibrateDialog(props) {
                             label={calName}
                             clickable
                             component={Link}
-                            to={`/calibrations/${props.unit}/${device}/${calName}`}
+                            sx={{maxWidth:"300px"}}
+                            to={`/calibrations/${unit}/${device}/${calName}`}
                           />
                         </TableCell>
                         <TableCell align="left" sx={{ padding: '6px 0px' }}>
@@ -534,13 +557,14 @@ function CalibrateDialog(props) {
                     );
                   })}
                 </TableBody>
-              </Table>
+              </Table>)
             )}
+
 
           </TabPanel>
         </DialogContent>
       </Dialog>
-  </React.Fragment>
+    </React.Fragment>
   );
 }
 
@@ -666,13 +690,13 @@ function SettingsActionsDialog(props) {
           <div key={"patient_buttons_init" + job}>
             <PatientButton
               color="primary"
-              variant="contained"
               onClick={()=>(false)}
               buttonText=<CircularProgress color="inherit" size={22}/>
               disabled={true}
             />
             <PatientButton
               color="secondary"
+              variant="contained"
               onClick={stopPioreactorJob(job)}
               buttonText="Stop"
             />
@@ -683,11 +707,11 @@ function SettingsActionsDialog(props) {
           <div key={"patient_buttons_ready" + job}>
             <PatientButton
               color="secondary"
-              variant="contained"
               onClick={setPioreactorJobState(job, "sleeping")}
               buttonText="Pause"
             />
             <PatientButton
+              variant="contained"
               color="secondary"
               onClick={stopPioreactorJob(job)}
               buttonText="Stop"
@@ -699,11 +723,11 @@ function SettingsActionsDialog(props) {
           <div key={"patient_buttons_sleeping" + job}>
             <PatientButton
               color="primary"
-              variant="contained"
               onClick={setPioreactorJobState(job, "ready")}
               buttonText="Resume"
             />
             <PatientButton
+              variant="contained"
               color="secondary"
               onClick={stopPioreactorJob(job)}
               buttonText="Stop"
@@ -755,7 +779,7 @@ function SettingsActionsDialog(props) {
   return (
     <div>
     <Button style={{textTransform: 'none', float: "right" }} disabled={props.disabled} onClick={handleClickOpen} color="primary">
-      <SettingsIcon color={props.disabled ? "disabled" : "primary"} fontSize="15" sx={textIcon}/> Manage
+      <SettingsIcon color={props.disabled ? "disabled" : "primary"} fontSize="small" sx={textIcon}/> Manage
     </Button>
     <Dialog maxWidth={isLargeScreen ? "sm" : "md"} fullWidth={true} open={open} onClose={handleClose} PaperProps={{
       sx: {
@@ -816,8 +840,11 @@ function SettingsActionsDialog(props) {
                 <div dangerouslySetInnerHTML={{__html: job.metadata.description}}/>
               </Typography>
 
-              {buttons[job_key]}
+              <Box sx={{justifyContent:"space-between", display:"flex"}}>
+                {buttons[job_key]}
 
+                <AdvancedConfigButton jobName={job_key} displayName={job.metadata.display_name} unit={props.unit} experiment={props.experiment} config={props.config[`${job_key}.config`]} disabled={job.state !== "disconnected"} />
+              </Box>
               <ManageDivider/>
             </div>
           )}
@@ -925,7 +952,7 @@ function SettingsActionsDialog(props) {
             </div>
 
 
-            <ChangeAutomationsDialog
+            <ChangeDosingAutomationsDialog
               automationType="dosing"
               open={openChangeDosingDialog}
               onFinished={() => setOpenChangeDosingDialog(false)}
@@ -933,6 +960,9 @@ function SettingsActionsDialog(props) {
               label={props.label}
               experiment={props.experiment}
               no_skip_first_run={false}
+              maxVolume={dosingControlJob.publishedSettings.max_working_volume_ml.value || parseFloat(props.config?.bioreactor?.max_working_volume_ml) || 10.0}
+              liquidVolume={dosingControlJob.publishedSettings.current_volume_ml.value || parseFloat(props.config?.bioreactor?.initial_volume_ml) || 10}
+              threshold={props.modelName === "pioreactor_20ml" ? 18 : 38}
             />
           </React.Fragment>
           }
@@ -1203,14 +1233,6 @@ function SettingsActionsDialog(props) {
             <table style={{borderCollapse: "separate", borderSpacing: "5px", fontSize: "0.90rem"}}>
               <tr>
                 <td style={{textAlign: "right", minWidth: "120px", color: ""}}>
-                    Pioreactor model
-                </td>
-                <td >
-                  <StylizedCode>{("Pioreactor " + versionInfo.pioreactor_model?.substring(11) + ", v" + versionInfo.pioreactor_version) || "-"}</StylizedCode>
-                </td>
-              </tr>
-              <tr>
-                <td style={{textAlign: "right", minWidth: "120px", color: ""}}>
                     Software version
                 </td>
                 <td >
@@ -1331,16 +1353,16 @@ function SettingsActionsDialog(props) {
 }
 
 
-function SettingTextField(props){
+function SettingTextField({ value: initialValue, onUpdate, setSnackbarMessage, setSnackbarOpen, units, disabled, job, setting, id }) {
 
-    const [value, setValue] = useState(props.value || "")
+    const [value, setValue] = useState(initialValue || "")
     const [activeSubmit, setActiveSumbit] = useState(false)
 
     useEffect(() => {
-      if (props.value !== value) {
-        setValue(props.value || "");
+      if (initialValue !== value) {
+        setValue(initialValue || "");
       }
-    }, [props.value]);
+    }, [initialValue]);
 
 
     const onChange = (e) => {
@@ -1355,13 +1377,13 @@ function SettingTextField(props){
     }
 
     const onSubmit = () => {
-        props.onUpdate(props.job, props.setting, value);
+        onUpdate(job, setting, value);
         if (value !== "") {
-          props.setSnackbarMessage(`Updating to ${value}${(!props.units) ? "" : (" "+props.units)}.`)
+          setSnackbarMessage(`Updating to ${value}${(!units) ? "" : (" "+units)}.`)
         } else {
-          props.setSnackbarMessage("Updating.")
+          setSnackbarMessage("Updating.")
         }
-        props.setSnackbarOpen(true)
+        setSnackbarOpen(true)
         setActiveSumbit(false)
     }
 
@@ -1370,10 +1392,10 @@ function SettingTextField(props){
         <TextField
           size="small"
           autoComplete="off"
-          disabled={props.disabled}
+          disabled={disabled}
           value={value}
           InputProps={{
-            endAdornment: <InputAdornment position="end">{props.units}</InputAdornment>,
+            endAdornment: <InputAdornment position="end">{units}</InputAdornment>,
             autoComplete: 'new-password',
           }}
           variant="outlined"
@@ -1386,7 +1408,7 @@ function SettingTextField(props){
           color="primary"
           disabled={!activeSubmit}
           onClick={onSubmit}
-          style={{textTransform: 'none', marginTop: "15px", marginLeft: "7px", display: (props.disabled ? "None" : "") }}
+          style={{textTransform: 'none', marginTop: "15px", marginLeft: "7px", display: (disabled ? "None" : "") }}
         >
           Update
         </Button>
@@ -1395,26 +1417,27 @@ function SettingTextField(props){
 }
 
 
-function SettingSwitchField(props){
-    const [value, setValue] = useState(props.value || false)
+function SettingSwitchField({ value: initialValue, onUpdate, setSnackbarMessage, setSnackbarOpen, job, setting, disabled, id }) {
+  const [value, setValue] = useState(initialValue || false)
 
     useEffect(() => {
-      if (props.value !== value) {
-        setValue(props.value|| false);
+      if (initialValue !== value) {
+        setValue(initialValue || false);
       }
-    }, [props.value]); //TODO: this use to be [props]
+    }, [initialValue]);
 
     const onChange = (e) => {
-      setValue(e.target.checked)
-      props.onUpdate(props.job, props.setting,  e.target.checked ? 1 : 0);
-      props.setSnackbarMessage(`Updating to ${e.target.checked ? "on" : "off"}.`)
-      props.setSnackbarOpen(true)
+      const checked = e.target.checked;
+      setValue(checked)
+      onUpdate(job, setting, checked ? 1 : 0);
+      setSnackbarMessage(`Updating to ${checked ? "on" : "off"}.`)
+      setSnackbarOpen(true)
     }
 
     return (
       <Switch
         checked={value}
-        disabled={props.disabled}
+        disabled={disabled}
         onChange={onChange}
       />
     )
@@ -1495,9 +1518,8 @@ function SettingNumericField(props) {
 
 
 
-function UnitCard({unit, experiment, config, isAssignedToExperiment, isActive}){
+function UnitCard({unit, experiment, config, isAssignedToExperiment, isActive, modelName}){
   const [relabelMap, setRelabelMap] = useState({})
-
   useEffect(() => {
 
     if (experiment){
@@ -1508,7 +1530,7 @@ function UnitCard({unit, experiment, config, isAssignedToExperiment, isActive}){
   return (
     <React.Fragment>
       <div>
-         <PioreactorCard isUnitActive={isAssignedToExperiment && isActive} unit={unit} config={config} experiment={experiment} label={relabelMap[unit]}/>
+         <PioreactorCard modelName={modelName} isUnitActive={isAssignedToExperiment && isActive} unit={unit} config={config} experiment={experiment} label={relabelMap[unit]}/>
       </div>
     </React.Fragment>
 )}
@@ -1525,18 +1547,14 @@ function FlashLEDButton(props){
 
   return (
     <Button style={{textTransform: 'none', float: "right"}} className={flashing ? 'blinkled' : ''}  disabled={props.disabled} onClick={onClick} color="primary">
-      <FlareIcon color={props.disabled ? "disabled" : "primary"} fontSize="15" sx={textIcon}/> <span > Identify </span>
+      <FlareIcon color={props.disabled ? "disabled" : "primary"} fontSize="small" sx={textIcon}/> <span > Identify </span>
     </Button>
 )}
 
 
-function PioreactorCard(props){
-  const unit = props.unit
-  const isUnitActive = props.isUnitActive
-  const experiment = props.experiment
-  const config = props.config
+function PioreactorCard({ unit, modelName, isUnitActive, experiment, config, label: initialLabel }){
   const [jobFetchComplete, setJobFetchComplete] = useState(false)
-  const [label, setLabel] = useState("")
+  const [label, setLabel] = useState(initialLabel || "")
   const {client, subscribeToTopic } = useMQTT();
 
   const [jobs, setJobs] = useState({
@@ -1564,8 +1582,8 @@ function PioreactorCard(props){
   })
 
   useEffect(() => {
-    setLabel(props.label)
-  }, [props.label])
+    setLabel(initialLabel)
+  }, [initialLabel])
 
 
   useEffect(() => {
@@ -1643,6 +1661,8 @@ function PioreactorCard(props){
   },[experiment, jobFetchComplete, client])
 
   const onMessage = (topic, message, packet) => {
+    if (!message || !topic) return;
+
     var [job, setting] = topic.toString().split('/').slice(-2)
     var payload;
     if (setting === "$state"){
@@ -1714,6 +1734,7 @@ function PioreactorCard(props){
             }
           })}>
             <div style={{display: "flex", justifyContent: "left"}}>
+              <PioreactorIconWithModel badgeContent={modelName === "pioreactor_40ml" ? "40" : "20"} />
               <Typography sx={{
                   fontSize: 20,
                   color: "rgba(0, 0, 0, 0.87)",
@@ -1721,7 +1742,6 @@ function PioreactorCard(props){
                   ...(isUnitActive ? {} : { color: disabledColor }),
                 }}
                 gutterBottom>
-                <PioreactorIcon color={isUnitActive ? "inherit" : "disabled"} sx={{verticalAlign: "middle", marginRight: "3px", display: {xs: 'none', sm: 'none', md: 'inline' } }}/>
                 {(label ) ? label : unit }
               </Typography>
               <Tooltip title={indicatorLabel} placement="right">
@@ -1771,6 +1791,7 @@ function PioreactorCard(props){
                 experiment={experiment}
                 jobs={jobs}
                 setLabel={setLabel}
+                modelName={modelName}
               />
             </Box>
           </Box>
@@ -1784,7 +1805,7 @@ function PioreactorCard(props){
         }}>
         <Box sx={{width: "100px", mt: "10px", mr: "5px"}}>
           <Typography variant="body2">
-            <Box fontWeight="fontWeightBold" sx={{ color: !props.isUnitActive ? disabledColor : 'inherit' }}>
+          <Box fontWeight="fontWeightBold" sx={{ color: !isUnitActive ? disabledColor : 'inherit' }}>
               Activities:
             </Box>
           </Typography>
@@ -1794,7 +1815,7 @@ function PioreactorCard(props){
               .filter(job => job.metadata.display)
               .map(job => (
             <Box sx={{width: "130px", mt: "10px", mr: "2px", px: "3px"}} key={job.metadata.key}>
-              <Typography variant="body2" style={{fontSize: "0.84rem"}} sx={{ color: !props.isUnitActive ? disabledColor : 'inherit' }}>
+              <Typography variant="body2" style={{fontSize: "0.84rem"}} sx={{ color: !isUnitActive ? disabledColor : 'inherit' }}>
                 {job.metadata.display_name}
               </Typography>
               <UnitSettingDisplay
@@ -1819,7 +1840,7 @@ function PioreactorCard(props){
         }}>
         <Box sx={{width: "100px", mt: "10px"}}>
           <Typography variant="body2">
-            <Box fontWeight="fontWeightBold" sx={{ color: !props.isUnitActive ? disabledColor : 'inherit' }}>
+            <Box fontWeight="fontWeightBold" sx={{ color: !isUnitActive ? disabledColor : 'inherit' }}>
               Settings:
             </Box>
           </Typography>
@@ -1833,7 +1854,7 @@ function PioreactorCard(props){
                 .filter(([setting_key, setting], _) => setting.display)
                 .map(([setting_key, setting], _) =>
                   <Box sx={{width: "130px", mt: "10px", mr: "2px", px: "3px"}} key={job_key + setting_key}>
-                    <Typography variant="body2" style={{fontSize: "0.84rem"}} sx={{ color: !props.isUnitActive ? disabledColor : 'inherit' }}>
+                    <Typography variant="body2" style={{fontSize: "0.84rem"}} sx={{ color: !isUnitActive ? disabledColor : 'inherit' }}>
                       {setting.label}
                     </Typography>
                     <UnitSettingDisplay
@@ -1878,7 +1899,7 @@ function Charts(props) {
         .filter(([chart_key, _]) => config['ui.overview.charts'] && (config['ui.overview.charts'][chart_key] === "1"))
         .map(([chart_key, chart]) =>
           <React.Fragment key={`grid-chart-${chart_key}`}>
-            <Grid item xs={12}>
+            <Grid size={12}>
               <Card sx={{ maxHeight: "100%"}}>
                 <Chart
                   unit={props.unit}
@@ -1901,7 +1922,7 @@ function Charts(props) {
                   relabelMap={props.relabelMap}
                   yTransformation={eval(chart.y_transformation || "(y) => y")}
                   dataSourceColumn={chart.data_source_column}
-                  isPartitionedBySensor={chart_key === "raw_optical_density"}
+                  isPartitionedBySensor={["raw_optical_density", 'optical_density'].includes(chart_key)}
                   isLiveChart={true}
                   byDuration={props.timeScale === "hours"}
                   client={client}
@@ -1914,17 +1935,22 @@ function Charts(props) {
           </React.Fragment>
      )}
     </React.Fragment>
-)}
+  );}
 
 
 
 
 function Pioreactor({title}) {
   const { experimentMetadata, selectExperiment } = useExperiment();
+  const [unitConfig, setUnitConfig] = useState({})
   const [config, setConfig] = useState({})
-  const {unit} = useParams();
+
+  const {pioreactorUnit} = useParams();
+  const unit = pioreactorUnit
   const [assignedExperiment, setAssignedExperiment] = useState(null)
   const [isActive, setIsActive] = useState(true)
+  const [modelName, setModelName] = useState("")
+  const [modelVersion, setModelVersion] = useState("")
   const [error, setError] = useState(null)
   const navigate = useNavigate()
 
@@ -1936,7 +1962,24 @@ function Pioreactor({title}) {
   useEffect(() => {
     document.title = title;
     getConfig(setConfig)
+
   }, [title]);
+
+  useEffect(() => {
+    fetch(`/api/units/${unit}/configuration`).then((response) => {
+      if (!response.ok) {
+        return response.json().then((errorData) => {
+          console.log(errorData)
+          throw new Error(errorData.error);
+        });
+      }
+      return response.json();
+    })
+    .then((data) => setUnitConfig(data))
+    .catch((error) => {
+      console.error("Fetching configuration failed:", error);
+    });
+  }, []);
 
   useEffect(() => {
     function getWorkerAssignment() {
@@ -1953,6 +1996,8 @@ function Pioreactor({title}) {
         .then((json) => {
         setAssignedExperiment(json['experiment'])
         setIsActive(json['is_active'])
+        setModelName(json['model_name'])
+        setModelVersion(json['model_version'])
       })
       .catch((error) => {
         setError(error.message);
@@ -1977,32 +2022,67 @@ function Pioreactor({title}) {
     return (
       <MQTTProvider name={unit} config={config} experiment={experimentMetadata.experiment}>
         <Grid container rowSpacing={1} columnSpacing={2} justifyContent="space-between">
-          <Grid item md={12} xs={12}>
-            <PioreactorHeader unit={unit} assignedExperiment={assignedExperiment} isActive={isActive} selectExperiment={selectExperiment}/>
+          <Grid
+            size={{
+              md: 12,
+              xs: 12
+            }}>
+            <PioreactorHeader unit={unit} assignedExperiment={assignedExperiment} isActive={isActive} selectExperiment={selectExperiment} modelName={modelName} modelVersion={modelVersion}/>
             {experimentMetadata.experiment && assignedExperiment && experimentMetadata.experiment !== assignedExperiment &&
             <Box>
               <Alert severity="info" style={{marginBottom: '10px', marginTop: '10px'}}>This worker is part of different experiment. Switch to experiment <Chip icon=<PlayCircleOutlinedIcon/> size="small" label={assignedExperiment} clickable onClick={onExperimentClick}/> to control this worker.</Alert>
             </Box>
           }
           </Grid>
-          <Grid item lg={8} md={12} xs={12}>
-            <UnitCard isActive={isActive} isAssignedToExperiment={experimentMetadata.experiment === assignedExperiment} unit={unit} experiment={experimentMetadata.experiment} config={config}/>
+          <Grid
+            size={{
+              lg: 8,
+              md: 12,
+              xs: 12
+            }}>
+            <UnitCard modelName={modelName} isActive={isActive} isAssignedToExperiment={experimentMetadata.experiment === assignedExperiment} unit={unit} experiment={experimentMetadata.experiment} config={unitConfig}/>
           </Grid>
-          <Grid item lg={4} md={12} xs={12}>
-            <Bioreactor20Diagram  experiment={experimentMetadata.experiment} unit={unit} config={config}/>
+          <Grid
+            size={{
+              lg: 4,
+              md: 12,
+              xs: 12
+            }}>
+            {modelName === "pioreactor_20ml" &&
+            <Bioreactor20Diagram  experiment={experimentMetadata.experiment} unit={unit} config={unitConfig}/>
+            }
+            {modelName === "pioreactor_40ml" &&
+            <Bioreactor40Diagram  experiment={experimentMetadata.experiment} unit={unit} config={unitConfig}/>
+            }
           </Grid>
 
-          <Grid item xs={12} md={7} container spacing={2} justifyContent="flex-start" style={{height: "100%"}}>
-            <Charts unit={unit} unitsColorMap={{[unit]: colors[0]}} config={config} timeScale={"clock_time"} timeWindow={10000000} experimentMetadata={experimentMetadata}/>
+          <Grid
+            container
+            spacing={2}
+            justifyContent="flex-start"
+            style={{height: "100%"}}
+            size={{
+              xs: 12,
+              md: 7
+            }}>
+            <Charts unit={unit} unitsColorMap={{[unit]: colors[0]}} config={unitConfig} timeScale={"clock_time"} timeWindow={10000000} experimentMetadata={experimentMetadata}/>
           </Grid>
-          <Grid item xs={12} md={5} container spacing={1} justifyContent="flex-end" style={{height: "100%"}}>
-            <Grid item xs={12}>
+          <Grid
+            container
+            spacing={1}
+            justifyContent="flex-end"
+            style={{height: "100%"}}
+            size={{
+              xs: 12,
+              md: 5
+            }}>
+            <Grid size={12}>
               <LogTableByUnit experiment={experimentMetadata.experiment} unit={unit}/>
             </Grid>
           </Grid>
         </Grid>
       </MQTTProvider>
-    )
+    );
   }
 }
 

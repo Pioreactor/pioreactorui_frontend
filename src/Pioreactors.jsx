@@ -6,9 +6,11 @@ import Grid from '@mui/material/Grid';
 import { useMediaQuery } from "@mui/material";
 import { styled } from '@mui/material/styles';
 
+
+
 import Chip from '@mui/material/Chip';
 import Card from '@mui/material/Card';
-import CardContent from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
 import {Typography} from '@mui/material';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
@@ -46,12 +48,15 @@ import { Table, TableBody, TableCell, TableHead, TableRow } from '@mui/material'
 
 import { useNavigate, Link } from 'react-router-dom'
 
+import AdvancedConfigButton from "./components/AdvancedConfigDialog"
 import ChangeAutomationsDialog from "./components/ChangeAutomationsDialog"
+import ChangeDosingAutomationsDialog from "./components/ChangeDosingAutomationsDialog"
 import ActionDosingForm from "./components/ActionDosingForm"
 import ActionManualDosingForm from "./components/ActionManualDosingForm"
 import ActionCirculatingForm from "./components/ActionCirculatingForm"
 import ActionLEDForm from "./components/ActionLEDForm"
 import PioreactorIcon from "./components/PioreactorIcon"
+import PioreactorIconWithModel from "./components/PioreactorIconWithModel"
 import PioreactorsIcon from "./components/PioreactorsIcon"
 import SelfTestDialog from "./components/SelfTestDialog"
 import UnderlineSpan from "./components/UnderlineSpan";
@@ -108,8 +113,7 @@ const RowOfUnitSettingDisplayBox  = styled(Box)(({ theme }) => ({
 }));
 
 
-function TabPanel(props) {
-  const { children, value, index, ...other } = props;
+function TabPanel({ children, value, index, ...other }) {
 
   return (
     <div
@@ -127,14 +131,11 @@ function TabPanel(props) {
   );
 }
 
-function UnitSettingDisplaySubtext(props){
-
-  if (props.subtext){
-    return <Chip size="small" sx={{fontSize: "11px", wordBreak: "break-word", padding: "5px 0px"}} label={props.subtext.replaceAll("_", " ")} />
+function UnitSettingDisplaySubtext({ subtext }) {
+  if (subtext) {
+    return <Chip size="small" sx={{fontSize: "11px", wordBreak: "break-word", padding: "5px 0px"}} label={subtext.replaceAll("_", " ")} />;
   }
-  else{
-    return <Box sx={{minHeight: "24px"}}></Box>
-  };
+  return <Box sx={{minHeight: "24px"}} />;
 }
 
 
@@ -291,8 +292,8 @@ function ButtonStopProcess({experiment}) {
   };
 
   return (
-    <Button style={{textTransform: 'none', float: "right" }} color="secondary" onClick={handleClick}>
-      <ClearIcon fontSize="15" sx={textIcon}/> Stop all activity
+    <Button sx={{textTransform: 'none', float: "right" }} color="secondary" onClick={handleClick}>
+      <ClearIcon fontSize="small" sx={textIcon}/> Stop all activity
     </Button>
   );
 }
@@ -300,9 +301,9 @@ function ButtonStopProcess({experiment}) {
 
 
 
-const CustomFormControlLabel = ({ label, sublabel, ...props }) => (
+const CustomFormControlLabel = ({ label, sublabel, control, ...props }) => (
   <FormControlLabel
-    control={props.control}
+    control={control}
     label={
       <Box>
         <Typography variant="body1">{label}</Typography>
@@ -421,7 +422,7 @@ function AssignPioreactors({ experiment, variant="text" }) {
     <React.Fragment>
       <Button variant={variant} style={{ textTransform: "none" }} onClick={handleClickOpen}>
         <LibraryAddCheckOutlinedIcon
-          fontSize="15"
+          fontSize="small"
           sx={{ verticalAlign: "middle", margin: "0px 3px" }}
         />
         Assign Pioreactors
@@ -464,7 +465,7 @@ function AssignPioreactors({ experiment, variant="text" }) {
                   onChange={handleSelectAllChange}
                 />
               }
-              label={<span><i>Select all</i></span>}
+              label={<span><i>Select all available</i></span>}
               sx={{mb: 1}}
             />
             }
@@ -522,7 +523,7 @@ function AssignPioreactors({ experiment, variant="text" }) {
   );
 }
 
-function PioreactorHeader({experiment}) {
+function PioreactorHeader({experiment, config}) {
   return (
     <Box>
       <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
@@ -534,7 +535,7 @@ function PioreactorHeader({experiment}) {
         <Box sx={{display: "flex", flexDirection: "row", justifyContent: "flex-start", flexFlow: "wrap"}}>
           <ButtonStopProcess experiment={experiment}/>
           <AssignPioreactors experiment={experiment}/>
-          <SettingsActionsDialogAll experiment={experiment}/>
+          <SettingsActionsDialogAll experiment={experiment} config={config}/>
           <Divider orientation="vertical" flexItem variant="middle"/>
           <ManageExperimentMenu experiment={experiment}/>
         </Box>
@@ -545,32 +546,34 @@ function PioreactorHeader({experiment}) {
 }
 
 
-function CalibrateDialog(props) {
+
+function CalibrateDialog({ unit, experiment, odBlankReading, odBlankJobState, growthRateJobState, label, disabled }) {
   const [open, setOpen] = useState(false);
   const [tabValue, setTabValue] = useState(0);
-  const [activeCalibrations, setActiveCalibrations] = useState({})
+  const [activeCalibrations, setActiveCalibrations] = useState({});
+  const [loadingCalibrations, setLoadingCalibrations] = useState(false);
 
   useEffect(() => {
+    if (!open) return;
 
-    if (!open) {
-      return;
-    }
+    setLoadingCalibrations(true)
 
-    const apiUrl = `/api/workers/${props.unit}/active_calibrations`;
+    const apiUrl = `/api/workers/${unit}/active_calibrations`;
 
     const fetchCalibrations = async () => {
       try {
         const response = await fetch(apiUrl);
         const firstResponse = await response.json();
-        const data = await checkTaskCallback(firstResponse.result_url_path, {delayMs: 200})
-        setActiveCalibrations(data.result[props.unit]);
+        const data = await checkTaskCallback(firstResponse.result_url_path, {delayMs: 2000})
+        setActiveCalibrations(data.result[unit]);
+        setLoadingCalibrations(false)
       } catch (err) {
         console.error("Failed to fetch calibration:", err);
       }
     };
 
     fetchCalibrations();
-  }, [open, props.unit] )
+  }, [open, unit]);
 
 
   const handleTabChange = (event, newValue) => {
@@ -606,7 +609,7 @@ function CalibrateDialog(props) {
                <PatientButton
                 color="primary"
                 variant="contained"
-                onClick={() => runPioreactorJob(props.unit, props.experiment, job)}
+                onClick={() => runPioreactorJob(unit, experiment, job)}
                 buttonText="Start"
                 disabled={always_disable}
                />
@@ -614,19 +617,19 @@ function CalibrateDialog(props) {
     }
    }
 
-  const isGrowRateJobRunning = props.growthRateJobState === "ready"
-  const hasActiveODCalibration = "od" in (activeCalibrations || {})
-  const blankODButton = createUserButtonsBasedOnState(props.odBlankJobState, "od_blank", (isGrowRateJobRunning || hasActiveODCalibration))
+  const isGrowRateJobRunning = growthRateJobState === "ready";
+  const hasActiveODCalibration = "od" in (activeCalibrations || {});
+  const blankODButton = createUserButtonsBasedOnState(odBlankJobState, "od_blank", (isGrowRateJobRunning || hasActiveODCalibration));
 
   return (
     <React.Fragment>
-      <Button style={{textTransform: 'none', float: "right" }} color="primary" disabled={props.disabled} onClick={handleClickOpen}>
-        <TuneIcon color={props.disabled ? "disabled" : "primary"} fontSize="15" sx={textIcon}/> Calibrate
+      <Button style={{textTransform: 'none', float: "right" }} color="primary" disabled={disabled} onClick={handleClickOpen}>
+        <TuneIcon color={disabled ? "disabled" : "primary"} fontSize="small" sx={textIcon}/> Calibrate
       </Button>
       <Dialog open={open} onClose={handleClose} aria-labelledby="form-dialog-title">
         <DialogTitle>
           <Typography sx={{fontSize: "13px", color: "rgba(0, 0, 0, 0.60)",}}>
-            <PioreactorIcon style={{verticalAlign: "middle", fontSize: "1.2em"}}/> {(props.label) ? `${props.label} / ${props.unit}` : `${props.unit}`}
+          <PioreactorIcon style={{verticalAlign: "middle", fontSize: "1.2em"}}/> {(label) ? `${label} / ${unit}` : `${unit}`}
           </Typography>
           <Tabs
             value={tabValue}
@@ -657,14 +660,13 @@ function CalibrateDialog(props) {
             </Typography>
             <Typography variant="body2" component="p" gutterBottom>
               For more accurate growth rate and biomass inferences, the Pioreactor can subtract out the
-              media's <i>un-inoculated</i> optical density <i>per experiment</i>. Read more about <a href="https://docs.pioreactor.com/user-guide/od-normal-growth-rate#blanking">using blanks</a>.
+              media's <i>un-inoculated</i> optical density <i>per experiment</i>. Read more about <a href="https://docs.pioreactor.com/user-guide/od-normal-growth-rate#blanking">using blanks</a>. If your Pioreactor has an active OD calibration, this isn't required.
             </Typography>
             <Typography variant="body2" component="p" style={{margin: "20px 0px"}}>
-              Recorded optical densities of blank vial: <code>{props.odBlankReading ? Object.entries(JSON.parse(props.odBlankReading) || {}).map( ([k, v]) => `${k}:${v.toFixed(5)}` ).join(", ") : "—"}</code>
+              Recorded optical densities of blank vial: <code>{odBlankReading ? Object.entries(JSON.parse(odBlankReading)).map( ([k, v]) => `${k}:${v.toFixed(5)}` ).join(", ") : "—"}</code>
             </Typography>
 
             <div style={{display: "flex"}}>
-
               {hasActiveODCalibration &&
                 <UnderlineSpan title="If an active OD calibration is present, this isn't used.">
                   {blankODButton}
@@ -675,9 +677,8 @@ function CalibrateDialog(props) {
                 {blankODButton}
                 </div>
               }
-
               <div>
-                <Button size="small" sx={{width: "70px", mt: "5px", height: "31px", mr: '3px'}} color="secondary" disabled={(props.odBlankReading === null) || (isGrowRateJobRunning)} onClick={() => runPioreactorJob(props.unit, props.experiment, "od_blank", ['delete']) }> Clear </Button>
+              <Button size="small" sx={{width: "70px", mt: "5px", height: "31px", mr: '3px'}} color="secondary" disabled={(odBlankReading === null) || (isGrowRateJobRunning)} onClick={() => runPioreactorJob(unit, experiment, "od_blank", ['delete']) }> Clear </Button>
               </div>
             </div>
             <ManageDivider/>
@@ -691,15 +692,17 @@ function CalibrateDialog(props) {
               Below are the active calibrations that will be used when running devices like pumps, stirring, etc. Read more about{' '}
               <a href="https://docs.pioreactor.com/user-guide/hardware-calibrations">calibrations</a>.
             </Typography>
-
-            {Object.entries(activeCalibrations || {}).length === 0 ? (
+            {loadingCalibrations ? (
+              <Box sx={{ textAlign: 'center', marginTop: '2rem' }}>
+                <CircularProgress />
+              </Box>
+            ) : Object.entries(activeCalibrations || {}).length === 0 ? (
               // Empty state message when there are no active calibrations.
-              <Typography variant="body2" component="p" color="textSecondary" sx={{mt: 3}}>
-                There are no active calibrations available.
-              </Typography>
+              (<Typography variant="body2" component="p" color="textSecondary" sx={{ mt: 3 }}>There are no active calibrations available.
+                              </Typography>)
             ) : (
               // Table rendering when active calibrations exist.
-              <Table size="small">
+              (<Table size="small">
                 <TableHead>
                   <TableRow>
                     <TableCell align="left" sx={{ padding: '6px 0px' }}>Device</TableCell>
@@ -722,7 +725,7 @@ function CalibrateDialog(props) {
                             label={calName}
                             clickable
                             component={Link}
-                            to={`/calibrations/${props.unit}/${device}/${calName}`}
+                            to={`/calibrations/${unit}/${device}/${calName}`}
                           />
                         </TableCell>
                         <TableCell align="left" sx={{ padding: '6px 0px' }}>
@@ -732,19 +735,23 @@ function CalibrateDialog(props) {
                     );
                   })}
                 </TableBody>
-              </Table>
+              </Table>)
             )}
+
+
           </TabPanel>
         </DialogContent>
       </Dialog>
-  </React.Fragment>
+    </React.Fragment>
   );
 }
 
 
 
-function SettingsActionsDialog(props) {
+
+function SettingsActionsDialog({ unit, experiment, jobs, setLabel, label, disabled, modelName }) {
   const [open, setOpen] = useState(false);
+  const [config, setConfig] = useState({})
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [snackbarMessage, setSnackbarMessage] = useState("");
   const [tabValue, setTabValue] = useState(0);
@@ -753,6 +760,26 @@ function SettingsActionsDialog(props) {
   const [openChangeDosingDialog, setOpenChangeDosingDialog] = useState(false);
   const [openChangeLEDDialog, setOpenChangeLEDDialog] = useState(false);
   const [openChangeTemperatureDialog, setOpenChangeTemperatureDialog] = useState(false);
+
+  useEffect(() => {
+    if (!open){
+      return
+    }
+
+    fetch(`/api/units/${unit}/configuration`).then((response) => {
+      if (!response.ok) {
+        return response.json().then((errorData) => {
+          console.log(errorData)
+          throw new Error(errorData.error);
+        });
+      }
+      return response.json();
+    })
+    .then((data) => setConfig(data))
+    .catch((error) => {
+      console.error("Fetching configuration failed:", error);
+    });
+  }, [open]);
 
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
@@ -769,14 +796,14 @@ function SettingsActionsDialog(props) {
   function rebootRaspberryPi(){
     return function() {
       setRebooting(true)
-      fetch(`/api/units/${props.unit}/system/reboot`, {method: "POST"})
+      fetch(`/api/units/${unit}/system/reboot`, {method: "POST"})
     }
   }
 
   function shutDownRaspberryPi(){
     return function() {
       setShuttingDown(true)
-      fetch(`/api/units/${props.unit}/system/shutdown`, {method: "POST"})
+      fetch(`/api/units/${unit}/system/shutdown`, {method: "POST"})
     }
   }
 
@@ -786,7 +813,7 @@ function SettingsActionsDialog(props) {
 
   function setPioreactorJobAttr(job, setting, value) {
 
-    fetch(`/api/workers/${props.unit}/jobs/update/job_name/${job}/experiments/${props.experiment}`, {
+    fetch(`/api/workers/${unit}/jobs/update/job_name/${job}/experiments/${experiment}`, {
       method: "PATCH",
       body: JSON.stringify({settings: {[setting]: value}}),
       headers: {
@@ -801,16 +828,16 @@ function SettingsActionsDialog(props) {
       const relabeledTo = value
       setSnackbarMessage(`Updating to ${relabeledTo}`)
       setSnackbarOpen(true)
-      fetch(`/api/experiments/${props.experiment}/unit_labels`,{
+      fetch(`/api/experiments/${experiment}/unit_labels`,{
           method: "PUT",
-          body: JSON.stringify({label: relabeledTo, unit: props.unit}),
+          body: JSON.stringify({label: relabeledTo, unit: unit}),
           headers: {
             'Accept': 'application/json',
             'Content-Type': 'application/json'
           }
         }).then(res => {
           if (res.ok) {
-            props.setLabel(relabeledTo)
+            setLabel(relabeledTo)
           }
         })
     }
@@ -839,7 +866,7 @@ function SettingsActionsDialog(props) {
                   <PatientButton
                     color="primary"
                     variant="contained"
-                    onClick={() => runPioreactorJob(props.unit, props.experiment, job)}
+                    onClick={() => runPioreactorJob(unit, experiment, job)}
                     buttonText="Start"
                   />
         </div>)
@@ -848,7 +875,7 @@ function SettingsActionsDialog(props) {
                  <PatientButton
                   color="primary"
                   variant="contained"
-                  onClick={() => runPioreactorJob(props.unit, props.experiment, job)}
+                  onClick={() => runPioreactorJob(unit, experiment, job)}
                   buttonText="Start"
                  />
                 <PatientButton
@@ -862,7 +889,6 @@ function SettingsActionsDialog(props) {
           <div key={"patient_buttons_init" + job}>
             <PatientButton
               color="primary"
-              variant="contained"
               onClick={()=>(false)}
               buttonText=<CircularProgress color="inherit" size={22}/>
               disabled={true}
@@ -871,6 +897,7 @@ function SettingsActionsDialog(props) {
               color="secondary"
               onClick={stopPioreactorJob(job)}
               buttonText="Stop"
+              variant="contained"
             />
           </div>
         )
@@ -879,11 +906,11 @@ function SettingsActionsDialog(props) {
           <div key={"patient_buttons_ready" + job}>
             <PatientButton
               color="secondary"
-              variant="contained"
               onClick={setPioreactorJobState(job, "sleeping")}
               buttonText="Pause"
             />
             <PatientButton
+              variant="contained"
               color="secondary"
               onClick={stopPioreactorJob(job)}
               buttonText="Stop"
@@ -895,11 +922,11 @@ function SettingsActionsDialog(props) {
           <div key={"patient_buttons_sleeping" + job}>
             <PatientButton
               color="primary"
-              variant="contained"
               onClick={setPioreactorJobState(job, "ready")}
               buttonText="Resume"
             />
             <PatientButton
+              variant="contained"
               color="secondary"
               onClick={stopPioreactorJob(job)}
               buttonText="Stop"
@@ -935,23 +962,23 @@ function SettingsActionsDialog(props) {
   }
 
 
-  const LEDMap = props.config['leds'] || {}
-  const buttons = Object.fromEntries(Object.entries(props.jobs || {}).map( ([job_key, job], _) => [job_key, createUserButtonsBasedOnState(job.state, job_key)]))
-  const versionInfo = JSON.parse(props.jobs.monitor.publishedSettings.versions.value || "{}")
-  const voltageInfo = JSON.parse(props.jobs.monitor.publishedSettings.voltage_on_pwm_rail.value || "{}")
-  const ipInfo = props.jobs.monitor.publishedSettings.ipv4.value
-  const macInfoWlan = props.jobs.monitor.publishedSettings.wlan_mac_address.value
-  const macInfoEth = props.jobs.monitor.publishedSettings.eth_mac_address.value
+  const LEDMap = config['leds'] || {}
+  const buttons = Object.fromEntries(Object.entries(jobs || {}).map(([job_key, job]) => [job_key, createUserButtonsBasedOnState(job.state, job_key)]));
+  const versionInfo = JSON.parse(jobs.monitor.publishedSettings.versions.value || "{}");
+  const voltageInfo = JSON.parse(jobs.monitor.publishedSettings.voltage_on_pwm_rail.value || "{}");
+  const ipInfo = jobs.monitor.publishedSettings.ipv4.value;
+  const macInfoWlan = jobs.monitor.publishedSettings.wlan_mac_address.value;
+  const macInfoEth = jobs.monitor.publishedSettings.eth_mac_address.value;
 
   const isLargeScreen = useMediaQuery(theme => theme.breakpoints.down('xl'));
-  const dosingControlJob = props.jobs.dosing_automation
-  const ledControlJob = props.jobs.led_automation
-  const temperatureControlJob = props.jobs.temperature_automation
+  const dosingControlJob = jobs.dosing_automation;
+  const ledControlJob = jobs.led_automation;
+  const temperatureControlJob = jobs.temperature_automation;
 
   return (
     <div>
-    <Button style={{textTransform: 'none', float: "right" }} disabled={props.disabled} onClick={handleClickOpen} color="primary">
-      <SettingsIcon color={props.disabled ? "disabled" : "primary"} fontSize="15" sx={textIcon}/> Manage
+    <Button style={{textTransform: 'none', float: "right" }} disabled={disabled} onClick={handleClickOpen} color="primary">
+      <SettingsIcon color={disabled ? "disabled" : "primary"} fontSize="small" sx={textIcon}/> Manage
     </Button>
     <Dialog maxWidth={isLargeScreen ? "sm" : "md"} fullWidth={true} open={open} onClose={handleClose} PaperProps={{
       sx: {
@@ -961,7 +988,7 @@ function SettingsActionsDialog(props) {
       <DialogTitle>
         <Typography sx={{fontSize: "13px", color: "rgba(0, 0, 0, 0.60)",}}>
           <PioreactorIcon style={{verticalAlign: "middle", fontSize: "1.2em"}}/>
-          <span> {props.label ? `${props.label} / ${props.unit}` : `${props.unit}`} </span>
+          <span> {label ? `${label} / ${unit}` : `${unit}`} </span>
         </Typography>
         <IconButton
           aria-label="close"
@@ -994,7 +1021,7 @@ function SettingsActionsDialog(props) {
       <DialogContent>
         <TabPanel value={tabValue} index={0}>
           {/* Unit Specific Activites */}
-          {Object.entries(props.jobs)
+          {Object.entries(jobs)
             .filter(([_, job]) => job.metadata.display)
             .filter(([job_key, job]) => !['dosing_automation', 'led_automation', 'temperature_automation'].includes(job_key)) // added later
             .map(([job_key, job]) =>
@@ -1011,9 +1038,11 @@ function SettingsActionsDialog(props) {
               <Typography variant="body2" component="p" gutterBottom>
                 <div dangerouslySetInnerHTML={{__html: job.metadata.description}}/>
               </Typography>
+              <Box sx={{justifyContent:"space-between", display:"flex"}}>
+                {buttons[job_key]}
 
-              {buttons[job_key]}
-
+                <AdvancedConfigButton jobName={job_key} displayName={job.metadata.display_name} unit={unit} experiment={experiment} config={config[`${job_key}.config`]} disabled={job.state !== "disconnected"} />
+              </Box>
               <ManageDivider/>
             </div>
           )}
@@ -1067,9 +1096,9 @@ function SettingsActionsDialog(props) {
             <ChangeAutomationsDialog
               open={openChangeTemperatureDialog}
               onFinished={() => setOpenChangeTemperatureDialog(false)}
-              unit={props.unit}
-              label={props.label}
-              experiment={props.experiment}
+              unit={unit}
+              label={label}
+              experiment={experiment}
               automationType="temperature"
               no_skip_first_run={true}
             />
@@ -1121,14 +1150,17 @@ function SettingsActionsDialog(props) {
             </div>
 
 
-            <ChangeAutomationsDialog
+            <ChangeDosingAutomationsDialog
               automationType="dosing"
               open={openChangeDosingDialog}
               onFinished={() => setOpenChangeDosingDialog(false)}
-              unit={props.unit}
-              label={props.label}
-              experiment={props.experiment}
+              unit={unit}
+              label={label}
+              experiment={experiment}
               no_skip_first_run={false}
+              maxVolume={parseFloat(dosingControlJob.publishedSettings.max_working_volume_ml.value) || parseFloat(config?.bioreactor?.max_working_volume_ml) || 10}
+              liquidVolume={parseFloat(dosingControlJob.publishedSettings.current_volume_ml.value) || parseFloat(config?.bioreactor?.current_volume_ml) || 10}
+              threshold={modelName === "pioreactor_20ml" ? 18 : 38}
             />
           </React.Fragment>
           }
@@ -1183,9 +1215,9 @@ function SettingsActionsDialog(props) {
               automationType="led"
               open={openChangeLEDDialog}
               onFinished={() => setOpenChangeLEDDialog(false)}
-              unit={props.unit}
-              label={props.label}
-              experiment={props.experiment}
+              unit={unit}
+              label={label}
+              experiment={experiment}
               no_skip_first_run={false}
             />
           </React.Fragment>
@@ -1205,7 +1237,7 @@ function SettingsActionsDialog(props) {
             Assign a temporary label to this Pioreactor for this experiment. The new label will display in graph legends, and throughout the interface.
           </Typography>
           <SettingTextField
-            value={props.label}
+            value={label}
             onUpdate={updateRenameUnit}
             setSnackbarMessage={setSnackbarMessage}
             setSnackbarOpen={setSnackbarOpen}
@@ -1213,7 +1245,7 @@ function SettingsActionsDialog(props) {
           />
           <ManageDivider/>
 
-          {Object.values(props.jobs)
+          {Object.values(jobs)
             .filter(job => job.metadata.display)
             .map(job => [job.state, job.metadata.key, job.publishedSettings])
             .map(([state, job_key, settings], index) => (
@@ -1244,7 +1276,7 @@ function SettingsActionsDialog(props) {
             Safely cycle media in and out of your Pioreactor for a set duration (seconds) by running the media periodically and waste pump continuously.
           </Typography>
 
-          <ActionCirculatingForm action="circulate_media" unit={props.unit} experiment={props.experiment} job={props.jobs.circulate_media} />
+          <ActionCirculatingForm action="circulate_media" unit={unit} experiment={experiment} job={jobs.circulate_media} />
 
           <ManageDivider/>
 
@@ -1255,7 +1287,7 @@ function SettingsActionsDialog(props) {
             Safely cycle alternative media in and out of your Pioreactor for a set duration (seconds) by running the alt-media periodically and waste pump continuously.
           </Typography>
 
-          <ActionCirculatingForm action="circulate_alt_media" unit={props.unit} experiment={props.experiment} job={props.jobs.circulate_alt_media} />
+          <ActionCirculatingForm action="circulate_alt_media" unit={unit} experiment={experiment} job={jobs.circulate_alt_media} />
 
           <ManageDivider/>
 
@@ -1270,7 +1302,7 @@ function SettingsActionsDialog(props) {
           <Typography variant="body2" component="p">
             Specify how you’d like to add media:
           </Typography>
-          <ActionDosingForm action="add_media" unit={props.unit} experiment={props.experiment} job={props.jobs.add_media} />
+          <ActionDosingForm action="add_media" unit={unit} experiment={experiment} job={jobs.add_media} />
           <ManageDivider/>
           <Typography  gutterBottom>
             Remove waste
@@ -1281,7 +1313,7 @@ function SettingsActionsDialog(props) {
           <Typography variant="body2" component="p">
             Specify how you’d like to remove waste:
           </Typography>
-          <ActionDosingForm action="remove_waste" unit={props.unit} experiment={props.experiment} job={props.jobs.remove_waste} />
+          <ActionDosingForm action="remove_waste" unit={unit} experiment={experiment} job={jobs.remove_waste} />
           <ManageDivider/>
           <Typography gutterBottom>
             Add alternative media
@@ -1292,7 +1324,7 @@ function SettingsActionsDialog(props) {
           <Typography variant="body2" component="p">
             Specify how you’d like to add alt-media:
           </Typography>
-          <ActionDosingForm action="add_alt_media" unit={props.unit} experiment={props.experiment} job={props.jobs.add_alt_media} />
+          <ActionDosingForm action="add_alt_media" unit={unit} experiment={experiment} job={jobs.add_alt_media} />
           <ManageDivider/>
           <Typography gutterBottom>
             Manual adjustments
@@ -1300,7 +1332,7 @@ function SettingsActionsDialog(props) {
           <Typography variant="body2" component="p" gutterBottom>
             Record adjustments before manually adding or removing from the vial. This is recorded in the database and will ensure accurate metrics. Dosing automation must be on.
           </Typography>
-          <ActionManualDosingForm unit={props.unit} experiment={props.experiment}/>
+          <ActionManualDosingForm unit={unit} experiment={experiment}/>
 
 
         </TabPanel>
@@ -1312,7 +1344,7 @@ function SettingsActionsDialog(props) {
           <Typography sx={{fontSize: "13px", color: "rgba(0, 0, 0, 0.60)",}} color="textSecondary">
             {(LEDMap['A']) ? "Channel A" : ""}
           </Typography>
-          <ActionLEDForm experiment={props.experiment} channel="A" unit={props.unit} />
+          <ActionLEDForm experiment={experiment} channel="A" unit={unit} />
           <ManageDivider/>
 
           <Typography style={{textTransform: "capitalize"}}>
@@ -1321,7 +1353,7 @@ function SettingsActionsDialog(props) {
           <Typography sx={{fontSize: "13px", color: "rgba(0, 0, 0, 0.60)",}} color="textSecondary">
             {(LEDMap['B']) ? "Channel B" : ""}
           </Typography>
-          <ActionLEDForm experiment={props.experiment} channel="B" unit={props.unit} />
+          <ActionLEDForm experiment={experiment} channel="B" unit={unit} />
           <ManageDivider/>
 
           <Typography style={{textTransform: "capitalize"}}>
@@ -1331,7 +1363,7 @@ function SettingsActionsDialog(props) {
             {(LEDMap['C']) ? "Channel C" : ""}
           </Typography>
 
-          <ActionLEDForm experiment={props.experiment} channel="C" unit={props.unit} />
+          <ActionLEDForm experiment={experiment} channel="C" unit={unit} />
           <ManageDivider/>
 
           <Typography style={{textTransform: "capitalize"}}>
@@ -1340,7 +1372,7 @@ function SettingsActionsDialog(props) {
           <Typography sx={{fontSize: "13px", color: "rgba(0, 0, 0, 0.60)",}} color="textSecondary">
             {(LEDMap['D']) ? "Channel D" : ""}
           </Typography>
-          <ActionLEDForm experiment={props.experiment} channel="D" unit={props.unit} />
+          <ActionLEDForm experiment={experiment} channel="D" unit={unit} />
           <ManageDivider/>
         </TabPanel>
         <TabPanel value={tabValue} index={4}>
@@ -1367,7 +1399,7 @@ function SettingsActionsDialog(props) {
                     Hostname
                 </td>
                 <td>
-                  <StylizedCode>{props.unit}.local</StylizedCode>
+                  <StylizedCode>{unit}.local</StylizedCode>
                 </td>
               </tr>
               <tr>
@@ -1397,14 +1429,6 @@ function SettingsActionsDialog(props) {
 
 
             <table style={{borderCollapse: "separate", borderSpacing: "5px", fontSize: "0.90rem"}}>
-              <tr>
-                <td style={{textAlign: "right", minWidth: "120px", color: ""}}>
-                    Pioreactor model
-                </td>
-                <td >
-                  <StylizedCode>{("Pioreactor " + versionInfo.pioreactor_model?.substring(11) + ", v" + versionInfo.pioreactor_version) || "-"}</StylizedCode>
-                </td>
-              </tr>
               <tr>
                 <td style={{textAlign: "right", minWidth: "120px", color: ""}}>
                     Software version
@@ -1520,14 +1544,14 @@ function SettingsActionsDialog(props) {
       message={snackbarMessage}
       autoHideDuration={7000}
       resumeHideDuration={2000}
-      key={"snackbar" + props.unit + "settings"}
+      key={"snackbar" + unit + "settings"}
     />
     </div>
   );
 }
 
 
-function SettingsActionsDialogAll({experiment}) {
+function SettingsActionsDialogAll({experiment, config}) {
   const unit = "$broadcast"
   const [open, setOpen] = useState(false);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
@@ -1719,7 +1743,7 @@ function SettingsActionsDialogAll({experiment}) {
   return (
     <React.Fragment>
     <Button style={{textTransform: 'none', float: "right" }} onClick={handleClickOpen} color="primary">
-      <SettingsIcon fontSize="15" sx={textIcon}/> Manage Pioreactors
+      <SettingsIcon fontSize="small" sx={textIcon}/> Manage Pioreactors
     </Button>
     <Dialog  maxWidth={isLargeScreen ? "sm" : "md"} fullWidth={true}  open={open} onClose={handleClose} aria-labelledby="form-dialog-title"  PaperProps={{
       sx: {
@@ -1824,13 +1848,16 @@ function SettingsActionsDialogAll({experiment}) {
               {buttons['dosing_automation']}
             </div>
 
-            <ChangeAutomationsDialog
+            <ChangeDosingAutomationsDialog
               automationType="dosing"
               open={openChangeDosingDialog}
               onFinished={() => setOpenChangeDosingDialog(false)}
               unit={unit}
               experiment={experiment}
               no_skip_first_run={false}
+              maxVolume={config?.bioreactor?.max_working_volume_ml || 19}
+              liquidVolume={config?.bioreactor?.initial_volume_ml || 10}
+              threshold={39}
             />
           </React.Fragment>
           }
@@ -2004,61 +2031,62 @@ function SettingsActionsDialogAll({experiment}) {
 }
 
 
-function SettingTextField(props){
-    const [value, setValue] = useState(props.value || "")
-    const [activeSubmit, setActiveSumbit] = useState(false)
+function SettingTextField({ value: initialValue, onUpdate, setSnackbarMessage, setSnackbarOpen, units, disabled, job, setting, id }){
+  const [value, setValue] = useState(initialValue || "");
+  const [activeSubmit, setActiveSumbit] = useState(false);
 
-    useEffect(() => {
-      if (props.value !== value) {
-        setValue(props.value || "");
-      }
-    }, [props.value]);
-
-
-    const onChange = (e) => {
-      setActiveSumbit(true)
-      setValue(e.target.value)
+  useEffect(() => {
+    if (initialValue !== value) {
+      setValue(initialValue || "");
     }
+  }, [initialValue]);
 
-    const onKeyPress = (e) => {
-        if ((e.key === "Enter") && (e.target.value)) {
-          onSubmit()
-      }
-    }
 
-    const onSubmit = () => {
-        props.onUpdate(props.job, props.setting, value);
-        if (value !== "") {
-          props.setSnackbarMessage(`Updating to ${value}${(!props.units) ? "" : (" "+props.units)}.`)
-        } else {
-          props.setSnackbarMessage("Updating.")
-        }
-        props.setSnackbarOpen(true)
-        setActiveSumbit(false)
+  const onChange = (e) => {
+    setActiveSumbit(true);
+    setValue(e.target.value);
+  };
+
+  const onKeyPress = (e) => {
+    if (e.key === "Enter" && e.target.value) {
+      onSubmit();
     }
+  };
+
+  const onSubmit = () => {
+    onUpdate(job, setting, value);
+    if (value !== "") {
+      setSnackbarMessage(`Updating to ${value}${!units ? "" : ` ${units}`}.`);
+    } else {
+      setSnackbarMessage("Updating.");
+    }
+    setSnackbarOpen(true);
+    setActiveSumbit(false);
+  };
 
     return (
      <div style={{display: "flex"}}>
         <TextField
+          id={id}
           size="small"
           autoComplete="off"
-          disabled={props.disabled}
+          disabled={disabled}
           value={value}
           InputProps={{
-            endAdornment: <InputAdornment position="end">{props.units}</InputAdornment>,
+            endAdornment: <InputAdornment position="end">{units}</InputAdornment>,
             autoComplete: 'new-password',
           }}
           variant="outlined"
           onChange={onChange}
           onKeyPress={onKeyPress}
-          sx={{mt: 2, maxWidth: "180px",}}
+          sx={{mt: 2, maxWidth: "180px"}}
         />
         <Button
           size="small"
           color="primary"
           disabled={!activeSubmit}
           onClick={onSubmit}
-          style={{textTransform: 'none', marginTop: "15px", marginLeft: "7px", display: (props.disabled ? "None" : "") }}
+          style={{textTransform: 'none', marginTop: "15px", marginLeft: "7px", display: (disabled ? "none" : undefined)}}
         >
           Update
         </Button>
@@ -2067,44 +2095,44 @@ function SettingTextField(props){
 }
 
 
-function SettingSwitchField(props){
-    const [value, setValue] = useState(props.value || false)
+function SettingSwitchField({ value: initialValue, onUpdate, setSnackbarMessage, setSnackbarOpen, job, setting, disabled, id }){
+  const [value, setValue] = useState(initialValue || false);
 
-    useEffect(() => {
-      if (props.value !== value) {
-        setValue(props.value|| false);
-      }
-    }, [props.value]); //TODO: this use to be [props]
-
-    const onChange = (e) => {
-      setValue(e.target.checked)
-      props.onUpdate(props.job, props.setting,  e.target.checked ? 1 : 0);
-      props.setSnackbarMessage(`Updating to ${e.target.checked ? "on" : "off"}.`)
-      props.setSnackbarOpen(true)
+  useEffect(() => {
+    if (initialValue !== value) {
+      setValue(initialValue || false);
     }
+  }, [initialValue]);
 
-    return (
-      <Switch
-        checked={value}
-        disabled={props.disabled}
-        onChange={onChange}
-        id={props.id}
-      />
-    )
+  const onChange = (e) => {
+    const checked = e.target.checked;
+    setValue(checked);
+    onUpdate(job, setting, checked ? 1 : 0);
+    setSnackbarMessage(`Updating to ${checked ? "on" : "off"}.`);
+    setSnackbarOpen(true);
+  };
+
+  return (
+    <Switch
+      checked={value}
+      disabled={disabled}
+      onChange={onChange}
+      id={id}
+    />
+  );
 }
 
 
-function SettingNumericField(props) {
-
-  const [value, setValue] = useState(props.value || "");
+function SettingNumericField({ value: initialValue, units, onUpdate, setSnackbarMessage, setSnackbarOpen, job, setting, disabled, id }){
+  const [value, setValue] = useState(initialValue || "");
   const [error, setError] = useState(false);
   const [activeSubmit, setActiveSubmit] = useState(false);
 
   useEffect(() => {
-    if (props.value !== value) {
-      setValue(props.value || "");
+    if (initialValue !== value) {
+      setValue(initialValue || "");
     }
-  }, [props.value]);
+  }, [initialValue]);
 
   const validateNumericInput = (input) => {
     const numericPattern = /^-?\d*\.?\d*$/; // Allows negative and decimal numbers
@@ -2127,10 +2155,10 @@ function SettingNumericField(props) {
 
   const onSubmit = () => {
     if (!error) {
-      props.onUpdate(props.job, props.setting, value);
-      const message = value !== "" ? `Updating to ${value}${props.units ? " " + props.units : ""}.` : "Updating.";
-      props.setSnackbarMessage(message);
-      props.setSnackbarOpen(true);
+      onUpdate(job, setting, value);
+      const message = value !== "" ? `Updating to ${value}${units ? ` ${units}` : ""}.` : "Updating.";
+      setSnackbarMessage(message);
+      setSnackbarOpen(true);
       setActiveSubmit(false);
     }
   };
@@ -2138,15 +2166,15 @@ function SettingNumericField(props) {
   return (
     <div style={{ display: "flex" }}>
       <TextField
+        id={id}
         type="number"
         size="small"
         autoComplete="off"
-        disabled={props.disabled}
-        id={props.id}
+        disabled={disabled}
         value={value}
         error={error}
         InputProps={{
-          endAdornment: <InputAdornment position="end">{props.units}</InputAdornment>,
+          endAdornment: <InputAdornment position="end">{units}</InputAdornment>,
           autoComplete: 'new-password',
         }}
         variant="outlined"
@@ -2159,7 +2187,7 @@ function SettingNumericField(props) {
         color="primary"
         disabled={!activeSubmit || error}
         onClick={onSubmit}
-        style={{ textTransform: 'none', marginTop: "15px", marginLeft: "7px", display: (props.disabled ? "None" : "") }}
+        style={{ textTransform: 'none', marginTop: "15px", marginLeft: "7px", display: (disabled ? "none" : undefined) }}
       >
         Update
       </Button>
@@ -2179,7 +2207,7 @@ function ActiveUnits({experiment, config, units}){
   }, [experiment])
 
   const renderCards = () => (units || []).map(unit =>
-      <PioreactorCard  key={unit} isUnitActive={true} unit={unit} config={config} experiment={experiment} originalLabel={relabelMap[unit]}/>
+      <PioreactorCard  key={unit.pioreactor_unit} isUnitActive={true} unit={unit.pioreactor_unit} modelName={unit.model_name} config={config} experiment={experiment} originalLabel={relabelMap[unit.pioreactor_unit]}/>
   )
 
   return (
@@ -2200,23 +2228,21 @@ function ActiveUnits({experiment, config, units}){
 )}
 
 
-function FlashLEDButton(props){
-
+function FlashLEDButton({ unit, disabled }){
   const [flashing, setFlashing] = useState(false)
 
   const onClick = () => {
     setFlashing(true)
-    fetch(`/api/workers/${props.unit}/blink`, {method: "POST"})
+    fetch(`/api/workers/${unit}/blink`, {method: "POST"})
   }
   return (
-    <Button style={{textTransform: 'none', float: "right"}} className={flashing ? 'blinkled' : ''}  disabled={props.disabled} onClick={onClick} color="primary">
-      <FlareIcon color={props.disabled ? "disabled" : "primary"} fontSize="15" sx={textIcon}/> <span > Identify </span>
+    <Button style={{textTransform: 'none', float: "right"}} className={flashing ? 'blinkled' : ''} disabled={disabled} onClick={onClick} color="primary">
+      <FlareIcon color={disabled ? "disabled" : "primary"} fontSize="small" sx={textIcon}/> <span> Identify </span>
     </Button>
 )}
 
 
-function PioreactorCard({unit, isUnitActive, experiment, config, originalLabel}){
-
+function PioreactorCard({unit, isUnitActive, experiment, config, originalLabel, modelName}){
   const [jobFetchComplete, setJobFetchComplete] = useState(false)
   const [label, setLabel] = useState("")
   const {client, subscribeToTopic } = useMQTT();
@@ -2328,6 +2354,8 @@ function PioreactorCard({unit, isUnitActive, experiment, config, originalLabel})
   },[experiment, jobFetchComplete, isUnitActive, client])
 
   const onMessage = (topic, message, packet) => {
+    if (!message || !topic) return;
+
     var [job, setting] = topic.toString().split('/').slice(-2)
     if (setting === "$state"){
       var payload = message.toString()
@@ -2401,6 +2429,7 @@ function PioreactorCard({unit, isUnitActive, experiment, config, originalLabel})
               <Tooltip title={indicatorLabel} placement="left">
                 <div className="indicator-dot-beside-button" style={{boxShadow: `0 0 ${indicatorDotShadow}px ${indicatorDotColor}, inset 0 0 12px  ${indicatorDotColor}`}}/>
               </Tooltip>
+              <PioreactorIconWithModel badgeContent={modelName === "pioreactor_40ml" ? "40" : "20"} />
               <Typography sx={{
                   fontSize: 20,
                   color: "rgba(0, 0, 0, 0.87)",
@@ -2408,7 +2437,6 @@ function PioreactorCard({unit, isUnitActive, experiment, config, originalLabel})
                   ...(isUnitActive ? {} : { color: disabledColor }),
                 }}
                 gutterBottom>
-                <PioreactorIcon color={isUnitActive ? "inherit" : "disabled"} sx={{verticalAlign: "middle", marginRight: "3px", display: {xs: 'none', sm: 'none', md: 'inline' } }}/>
                 {(label ) ? label : unit }
               </Typography>
               <Button disabled={!isUnitActive} component={Link} to={`/pioreactors/${unit}`} sx={{padding: "0px 8px", marginBottom: "7px", ml: 1, textTransform: "none", ...(isUnitActive ? {} : { color: disabledColor }),}}>
@@ -2449,7 +2477,6 @@ function PioreactorCard({unit, isUnitActive, experiment, config, originalLabel})
                 />
               </div>
               <SettingsActionsDialog
-                config={config}
                 client={client}
                 unit={unit}
                 label={label}
@@ -2457,6 +2484,7 @@ function PioreactorCard({unit, isUnitActive, experiment, config, originalLabel})
                 experiment={experiment}
                 jobs={jobs}
                 setLabel={setLabel}
+                modelName={modelName}
               />
             </Box>
           </Box>
@@ -2543,7 +2571,7 @@ function PioreactorCard({unit, isUnitActive, experiment, config, originalLabel})
 )}
 
 
-function InactiveUnits(props){
+function InactiveUnits({ units, config, experiment }){
   return (
   <React.Fragment>
     <div style={{display: "flex", justifyContent: "space-between", marginBottom: "10px", marginTop: "15px"}}>
@@ -2553,8 +2581,8 @@ function InactiveUnits(props){
         </Box>
       </Typography>
     </div>
-    {(props.units || []).map(unit =>
-      <PioreactorCard  key={unit} isUnitActive={false} unit={unit} config={props.config} experiment={props.experiment}/>
+    {(units || []).map(unit =>
+      <PioreactorCard key={unit.pioreactor_name} isUnitActive={false} unit={unit.pioreactor_name} modelName={unit.model_name} config={config} experiment={experiment} />
   )}
     </React.Fragment>
 )}
@@ -2596,8 +2624,8 @@ function Pioreactors({title}) {
 
 
   const renderCards = () => {
-      const activeUnits = workers.filter(worker => worker.is_active === 1).map(worker => worker.pioreactor_unit);
-      const inactiveUnits = workers.filter(worker => worker.is_active === 0).map(worker => worker.pioreactor_unit);
+      const activeUnits = workers.filter(worker => worker.is_active === 1);
+      const inactiveUnits = workers.filter(worker => worker.is_active === 0);
       return (
       <>
       <ActiveUnits experiment={experimentMetadata.experiment} config={config} units={activeUnits} />
@@ -2627,15 +2655,19 @@ function Pioreactors({title}) {
   return (
     <MQTTProvider name="pioreactor" config={config} experiment={experimentMetadata.experiment}>
       <Grid container spacing={2} >
-        <Grid item md={12} xs={12}>
-          <PioreactorHeader experiment={experimentMetadata.experiment}/>
+        <Grid
+          size={{
+            md: 12,
+            xs: 12
+          }}>
+          <PioreactorHeader experiment={experimentMetadata.experiment} config={config}/>
 
           {(workers.length === 0 ? renderEmptyState() : renderCards())}
 
         </Grid>
       </Grid>
     </MQTTProvider>
-  )
+  );
 }
 
 export default Pioreactors;

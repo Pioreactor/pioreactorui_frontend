@@ -22,7 +22,6 @@ import Switch from '@mui/material/Switch';
 import AddIcon from '@mui/icons-material/Add';
 import CloseIcon from '@mui/icons-material/Close';
 import FlareIcon from '@mui/icons-material/Flare';
-import DeleteIcon from '@mui/icons-material/Delete';
 import IconButton from '@mui/material/IconButton';
 import TextField from '@mui/material/TextField';
 import Tooltip from '@mui/material/Tooltip';
@@ -34,11 +33,14 @@ import CircularProgress from '@mui/material/CircularProgress';
 import { useConfirm } from 'material-ui-confirm';
 import { useNavigate } from 'react-router-dom';
 import UnderlineSpan from "./components/UnderlineSpan";
-import Pioreactor40Icon from "./components/Pioreactor40Icon";
 import PioreactorIcon from "./components/PioreactorIcon";
+import PioreactorIconWithModel from "./components/PioreactorIconWithModel";
 import PowerSettingsNewIcon from '@mui/icons-material/PowerSettingsNew';
 import {getConfig, disconnectedGrey, lostRed, inactiveGrey, readyGreen} from "./utilities"
 import PlayCircleOutlinedIcon from '@mui/icons-material/PlayCircleOutlined';
+import Snackbar from '@mui/material/Snackbar';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+
 
 import { useExperiment } from './providers/ExperimentContext';
 
@@ -69,11 +71,10 @@ function Header(props) {
 
 
 
-function AddNewPioreactor(props){
+function AddNewPioreactor({setWorkers}){
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
-  const [model, setModel] = useState("pioreactor_20ml"); // setModel isn't used yet
-  const [version, setVersion] = useState("");
+  const [model, setModel] = React.useState(["pioreactor_40ml", "1.0"])
 
   const [isError, setIsError] = useState(false)
   const [errorMsg, setErrorMsg] = useState("")
@@ -95,8 +96,9 @@ function AddNewPioreactor(props){
   const handleNameChange = evt => {
     setName(evt.target.value)
   }
-  const handleVersionChange = evt => {
-    setVersion(evt.target.value)
+  const handleModelVersionChange = evt => {
+    const { modelName, modelVersion } = modelNameAndModelVersionFromModelString(evt.target.value);
+    setModel([modelName, modelVersion]);
   }
 
 
@@ -107,7 +109,7 @@ function AddNewPioreactor(props){
       setErrorMsg("Provide the hostname for the new Pioreactor worker")
       return
     }
-    else if (!version) {
+    else if (!model) {
       setIsError(true)
       setErrorMsg("Provide the model for the new Pioreactor worker. You can change the model later, too.")
       return
@@ -118,7 +120,7 @@ function AddNewPioreactor(props){
     setExpectedPathMsg("Setting up your new Pioreactor...")
     fetch('/api/workers/setup', {
         method: "POST",
-        body: JSON.stringify({name: name, model: model, version: version}),
+        body: JSON.stringify({name: name, model: model[0], version: model[1]}),
         headers: {
           'Accept': 'application/json',
           'Content-Type': 'application/json'
@@ -132,7 +134,7 @@ function AddNewPioreactor(props){
           response.json().then(data => setErrorMsg(`Unable to complete connection. The following error occurred: ${data.error}`))
         } else {
           setIsSuccess(true)
-          props.setWorkers((prevWorkers) => [...prevWorkers, {pioreactor_unit: name, is_active: true}])
+          setWorkers((prevWorkers) => [...prevWorkers, {pioreactor_unit: name, is_active: true, model_name: model[0], model_version: model[1]}].sort((a, b) => (a.pioreactor_unit > b.pioreactor_unit) ? 1 : -1))
           setSuccessMsg(`Success! Rebooting ${name} now. Add another?`)
         }
     })
@@ -141,7 +143,7 @@ function AddNewPioreactor(props){
   return (
     <React.Fragment>
     <Button onClick={handleClickOpen} style={{textTransform: 'none', float: "right", marginRight: "0px"}} color="primary">
-      <AddIcon fontSize="15" sx={textIcon}/> Add new Pioreactor
+      <AddIcon fontSize="small" sx={textIcon}/> Add new Pioreactor
     </Button>
     <Dialog open={open} onClose={handleClose} aria-labelledby="form-dialog-title">
       <DialogTitle>
@@ -186,12 +188,14 @@ function AddNewPioreactor(props){
         <FormControl required sx={{mt: "15px", ml: "10px", minWidth: "195px"}} variant="outlined" size="small">
           <InputLabel >Pioreactor model</InputLabel>
           <Select
-            value={version}
-            onChange={handleVersionChange}
+            value={modelStringFromModelNameAndModelVersion(model[0], model[1])}
+            onChange={handleModelVersionChange}
             label="Pioreactor model"
           >
-            <MenuItem value={"1.1"}>20ml, version 1.1</MenuItem>
-            <MenuItem value={"1.0"}>20ml, version 1.0</MenuItem>
+            <MenuItem value={"Pioreactor 40ml, v1.0"}>Pioreactor 40ml, v1.0</MenuItem>
+            <Divider/>
+            <MenuItem value={"Pioreactor 20ml, v1.1"}>Pioreactor 20ml, v1.1</MenuItem>
+            <MenuItem value={"Pioreactor 20ml, v1.0"}>Pioreactor 20ml, v1.0</MenuItem>
           </Select>
         </FormControl>
 
@@ -211,7 +215,7 @@ function AddNewPioreactor(props){
             onClick={onSubmit}
             type="submit"
             loading={isRunning}
-            disabled={!name || !version}
+            disabled={!name || !model}
             endIcon={ <PioreactorIcon /> }
 
           >
@@ -224,13 +228,33 @@ function AddNewPioreactor(props){
     </React.Fragment>
   );}
 
+function modelStringFromModelNameAndModelVersion(modelName, modelVersion){
+  if (modelName === "pioreactor_20ml"){
+    return `Pioreactor 20ml, v${modelVersion}`
+  } else if (modelName === "pioreactor_40ml"){
+    return `Pioreactor 40ml, v${modelVersion}`
+  } else {
+    return "Unknown model"
+  }
+}
 
+function modelNameAndModelVersionFromModelString(modelString) {
+  const match = modelString.match(/^Pioreactor (\d+ml), v(.+)$/);
+
+  if (match) {
+    const modelName = `pioreactor_${match[1]}`;
+    const modelVersion = match[2];
+    return { modelName, modelVersion };
+  }
+
+  return { modelName: "unknown", modelVersion: null };
+}
 
 function WorkerCard({worker, config, leaderVersion}) {
-
   const unit = worker.pioreactor_unit
   const isLeader = (config['cluster.topology']?.leader_hostname === unit)
   const [activeStatus, setActiveStatus] = React.useState(worker.is_active ? "active" : "inactive")
+  const [model, setModel] = React.useState([worker.model_name, worker.model_version])
   const [experimentAssigned, setExperimentAssigned] = React.useState(null)
   const {client, subscribeToTopic} = useMQTT();
   const [state, setState] = React.useState(null)
@@ -240,13 +264,23 @@ function WorkerCard({worker, config, leaderVersion}) {
   const [ETHAddress, setETHAddress] = React.useState(null)
   const { selectExperiment } = useExperiment();
   const navigate = useNavigate()
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
 
 
   const isActive = () => {
     return activeStatus === "active"
   }
 
+  const handleSnackbarClose = (e, reason) => {
+    if (reason === 'clickaway') {
+      return;
+    }
+    setSnackbarOpen(false)
+  }
+
   const onMonitorData = (topic, message, packet) => {
+    if (!message || !topic) return;
+
     const setting = topic.toString().split('/').pop()
     switch (setting) {
       case "$state":
@@ -306,6 +340,20 @@ function WorkerCard({worker, config, leaderVersion}) {
     }
   }
 
+  const handleModelChange = (event) => {
+    const { modelName, modelVersion } = modelNameAndModelVersionFromModelString(event.target.value);
+    setModel([modelName, modelVersion]);
+    setSnackbarOpen(true)
+    fetch(`/api/workers/${unit}/model`, {
+      method: "PUT",
+      body: JSON.stringify({model_name: modelName, model_version: modelVersion}),
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      }
+    })
+  }
+
   const indicatorDotColor = getIndicatorDotColor(state)
   const indicatorDotShadow = 2
   const indicatorLabel = getInicatorLabel(state, isActive())
@@ -350,19 +398,6 @@ function WorkerCard({worker, config, leaderVersion}) {
     navigate("/overview")
   }
 
-  const pioreactorString = () => {
-    if (!(state === "ready" || state === "init")){
-      return "-"
-    } else {
-      if (versions.pioreactor_model) {
-        return `Pioreactor ${(versions.pioreactor_model || "-").substring(11)}, v${versions.pioreactor_version || "-"}`
-      }
-      else {
-        // ready and not available.
-        return  "Missing! Fix in the configuration file."
-      }
-    }
-  }
 
   const softwareVersion = () => {
     const { app: workerVersion } = versions;
@@ -381,18 +416,14 @@ function WorkerCard({worker, config, leaderVersion}) {
   };
 
   return (
+    <>
     <Card sx={{ minWidth: 275 }}>
       <CardContent>
 
         <div style={{display: "flex", justifyContent: "space-between"}}>
-          <Typography sx={{ fontSize: 14 }} color={isActive() ? "text.secondary" : inactiveGrey} gutterBottom>
-            {isLeader ? "Leader & Worker" : "Worker"}
-          </Typography>
-        </div>
-
-        <div style={{display: "flex", justifyContent: "space-between"}}>
 
           <div style={{display: "flex", justifyContent: "left"}}>
+            <PioreactorIconWithModel badgeContent={model[0] === "pioreactor_40ml" ? "40" : "20"} />
             <Typography sx={{
                 fontSize: 20,
                 color: "rgba(0, 0, 0, 0.87)",
@@ -400,12 +431,7 @@ function WorkerCard({worker, config, leaderVersion}) {
                 ...(isActive() ? {} : { color: inactiveGrey }),
               }}
               gutterBottom>
-              {(versions.pioreactor_model !== "pioreactor_40ml") &&
-              <PioreactorIcon style={{verticalAlign: "middle", marginRight: "3px"}} sx={{ display: {xs: 'none', sm: 'none', md: 'inline' } }}/>
-              }
-              {(versions.pioreactor_model === "pioreactor_40ml") &&
-              <Pioreactor40Icon style={{verticalAlign: "middle", marginRight: "3px"}} sx={{ display: {xs: 'none', sm: 'none', md: 'inline' } }}/>
-              }
+
               {unit}
 
             </Typography>
@@ -448,7 +474,24 @@ function WorkerCard({worker, config, leaderVersion}) {
                 Model
             </td>
             <td >
-              <code style={{backgroundColor: "rgba(0, 0, 0, 0.07)", padding: "1px 4px"}}>{pioreactorString()}</code>
+              <Select
+                labelId="modelSelect"
+                variant="standard"
+                value={modelStringFromModelNameAndModelVersion(model[0], model[1])}
+                onChange={handleModelChange}
+                label="Model"
+                disableUnderline={true}
+                sx={{
+                  "& .MuiSelect-standard": {
+                    color: isActive() ? "inherit" : inactiveGrey
+                }
+                }}
+              >
+                <MenuItem value={"Pioreactor 40ml, v1.0"}>Pioreactor 40ml, v1.0</MenuItem>
+                <Divider/>
+                <MenuItem value={"Pioreactor 20ml, v1.1"}>Pioreactor 20ml, v1.1</MenuItem>
+                <MenuItem value={"Pioreactor 20ml, v1.0"}>Pioreactor 20ml, v1.0</MenuItem>
+              </Select>
             </td>
           </tr>
           <tr>
@@ -507,6 +550,15 @@ function WorkerCard({worker, config, leaderVersion}) {
         </Box>
       </CardActions>
     </Card>
+    <Snackbar
+      anchorOrigin={{vertical: "bottom", horizontal: "center"}}
+      open={snackbarOpen}
+      onClose={handleSnackbarClose}
+      message={`Updated ${unit} to ${modelStringFromModelNameAndModelVersion(model[0], model[1])}`}
+      autoHideDuration={2500}
+      key={"snackbar" + unit + "model"}
+    />
+    </>
 )}
 
 
@@ -522,7 +574,7 @@ function Blink({unit}){
 
   return (
     <Button style={{textTransform: 'none'}} className={flashing ? 'blinkled' : ''}  onClick={onClick} color="primary">
-      <FlareIcon color="primary" fontSize="15" sx={textIcon}/> Identify
+      <FlareIcon color="primary" fontSize="small" sx={textIcon}/> Identify
     </Button>
 )}
 
@@ -554,7 +606,7 @@ function Shutdown({unit}) {
 
   const confirm = useConfirm();
 
-  const shworker = () => {
+  const shutdownWorker = () => {
     confirm({
       description: 'Shutting down this Pioreactor will halt all activity and require a power-cycle to bring it back up.',
       title: `Shutdown ${unit}?`,
@@ -567,7 +619,7 @@ function Shutdown({unit}) {
   };
 
   return (
-      <Button style={{textTransform: "none"}} size="small" onClick={shworker}>
+      <Button style={{textTransform: "none"}} size="small" onClick={shutdownWorker}>
         <PowerSettingsNewIcon fontSize="small" sx={textIcon} />Shutdown
       </Button>
 )}
@@ -597,7 +649,7 @@ function Remove({unit, isLeader}) {
 
   const removeWorker = () => {
     confirm({
-      description: 'Removing this Pioreactor will unassign it from any experiments, halt all activity running, and remove it from your inventory. No experiment data is removed, however.',
+      description: 'Removing this Pioreactor will unassign it from any experiments, halt all activity running, and remove it from your inventory. No experiment data is removed, and calibration data still exists on the worker.',
       title: `Remove ${unit} from inventory?`,
       confirmationText: "Confirm",
       confirmationButtonProps: {color: "primary"},
@@ -614,7 +666,7 @@ function Remove({unit, isLeader}) {
 
   return (
     <Button color="secondary" style={{textTransform: "none"}} disabled={isLeader} size="small" onClick={removeWorker}>
-       <DeleteIcon  disabled={isLeader} color={isLeader ? "text.disabled" : "secondary"} fontSize="small" sx={textIcon}/> Remove
+       <DeleteOutlineIcon  disabled={isLeader} color={isLeader ? "text.disabled" : "secondary"} fontSize="small" sx={textIcon}/> Remove
     </Button>
 )}
 
@@ -639,14 +691,20 @@ function InventoryDisplay({isLoading, workers, config}){
       {isLoading ? <div style={{textAlign: "center", margin: 'auto', marginTop: "50px"}}><CircularProgress /> </div>: (
         <>
           {workers.map(worker =>
-          <Grid key={worker.pioreactor_unit} item md={6} xs={12} sm={12}>
+          <Grid
+            key={worker.pioreactor_unit}
+            size={{
+              md: 6,
+              xs: 12,
+              sm: 12
+            }}>
             <WorkerCard worker={worker} config={config} leaderVersion={leaderVersion}/>
           </Grid>
           )}
         </>
       )}
     </Grid>
-)}
+  );}
 
 
 
@@ -684,16 +742,20 @@ function Inventory({title}) {
   return (
     <MQTTProvider name="cluster" config={config}>
       <Grid container spacing={2} >
-        <Grid item md={12} xs={12}>
+        <Grid
+          size={{
+            md: 12,
+            xs: 12
+          }}>
           <Header setWorkers={setWorkers}/>
           <InventoryDisplay isLoading={isLoading} workers={workers} config={config} />
-          <Grid item xs={12}>
+          <Grid size={12}>
             <p style={{textAlign: "center", marginTop: "30px"}}>Learn more about <a href="https://docs.pioreactor.com/user-guide/create-cluster" target="_blank" rel="noopener noreferrer">inventory and cluster management</a>.</p>
           </Grid>
         </Grid>
       </Grid>
     </MQTTProvider>
-  )
+  );
 }
 
 export default Inventory;

@@ -6,7 +6,7 @@ import Select from '@mui/material/Select';
 import MenuItem from "@mui/material/MenuItem";
 import Grid from '@mui/material/Grid';
 import Card from '@mui/material/Card';
-import CardContent from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
 import Button from '@mui/material/Button';
 import Box from '@mui/material/Box';
 import {Typography} from '@mui/material';
@@ -18,9 +18,9 @@ import ListItemAvatar from '@mui/material/ListItemAvatar';
 import ListItemSecondaryAction from '@mui/material/ListItemSecondaryAction';
 import ListItemText from '@mui/material/ListItemText';
 import DeleteIcon from '@mui/icons-material/Delete';
-import GetAppIcon from '@mui/icons-material/GetApp';
+import DownloadIcon from '@mui/icons-material/Download';
 import CircularProgress from '@mui/material/CircularProgress';
-import { Link } from 'react-router-dom';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import Dialog from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
@@ -77,7 +77,7 @@ function InstallByNameDialog(props){
     <React.Fragment>
 
     <Button style={{textTransform: 'none', marginRight: "0px", float: "right"}} color="primary" onClick={handleClickOpen}>
-      <GetAppIcon fontSize="15"/> Install plugin by name
+      <DownloadIcon fontSize="small"/> Install plugin by name
     </Button>
     <Dialog open={open} onClose={handleClose} aria-labelledby="form-dialog-title">
       <DialogTitle>
@@ -117,7 +117,7 @@ function InstallByNameDialog(props){
             style={{marginTop: "20px", textTransform: 'none'}}
             onClick={onSubmit}
             type="submit"
-            endIcon={<GetAppIcon />}
+            endIcon={<DownloadIcon />}
           >
             Install
           </Button>
@@ -197,7 +197,6 @@ function ListSuggestedPlugins({selectedUnit, installedPlugins}){
     }
     setSnackbarOpen(false)
   }
-  console.log(installedPlugins, availablePlugins)
   return (
     <React.Fragment>
       <Box sx={{m: "auto", mb: "15px", width: "92%"}}>
@@ -236,9 +235,9 @@ function ListSuggestedPlugins({selectedUnit, installedPlugins}){
                   aria-label="install"
                   value={selectedUnit}
                   onClick={(e) => installPlugin(e.target.value, plugin.name)}
-                  //endIcon={<GetAppIcon />}
+                  //endIcon={<DownloadIcon />}
                   style={{textTransform: 'none'}}
-                  sx={{ml: "5px"}}
+                  sx={{ml: "3px"}}
                   disabled={installedPlugins.includes(plugin.name)}
                 >
                   <MenuItem value={selectedUnit}>{installedPlugins.includes(plugin.name) ? `Installed on ${selectedUnit}` :  `Install on ${selectedUnit}` }</MenuItem>
@@ -307,74 +306,74 @@ function ListInstalledPlugins({selectedUnit, installedPlugins}){
   if (installedPlugins.length > 0) {
     return (
       <React.Fragment>
-      <Box sx={{m: "auto", mb: "15px", width: "92%"}}>
-       <List >
-          {installedPlugins.map(( plugin, i) =>
-            <ListItem key={plugin.name}>
-              <ListItemAvatar>
-                  <Avatar name={plugin.name + "seed1"} size={40} colors={["#5332ca", "#94ccc1", "#d8535e", "#f0b250", "#e5e5e5"]} variant="bauhaus"/>
-              </ListItemAvatar>
-              <ListItemText
-                primary={`${plugin.name} ${(plugin.version === "Unknown")  ? "" : "(" + plugin.version + ")"}`}
-                primaryTypographyProps={{style: {fontSize: '0.95rem'}}}
-                secondary={
-                 <>
-                  <Typography
-                    sx={{ display: 'block', fontStyle: "italic" }}
-                    component="span"
-                    variant="body2"
-                    color="text.primary"
-                  >
-                    {plugin.author || "unknown author"}
-                  </Typography>
-                  <span>{`${plugin.description === "Unknown" ? "No description provided." : plugin.description}`}</span>
-                 </>
-                }
-                style={{maxWidth: "525px"}}
-              />
-              <ListItemSecondaryAction sx={{display: {xs: 'contents', md: 'block'}}}>
-                <Button
-                  onClick={uninstallPlugin(plugin.source.startsWith("plugins/") ? plugin.source.slice(8, -3) : plugin.name)}
-                  variant="text"
-                  size="small"
-                  color="primary"
-                  aria-label="delete"
-                  style={{textTransform: 'none'}}
-                  endIcon={<DeleteIcon />}
-                  sx={{ml: "5px"}}
-                >
-                  Uninstall
-                </Button>
+        <Box sx={{m: "auto", mb: "15px", width: "92%"}}>
+         <List >
+            {installedPlugins.map(( plugin, i) =>
+              <ListItem key={plugin.name}>
+                <ListItemAvatar>
+                    <Avatar name={plugin.name + "seed1"} size={40} colors={["#5332ca", "#94ccc1", "#d8535e", "#f0b250", "#e5e5e5"]} variant="bauhaus"/>
+                </ListItemAvatar>
+                <ListItemText
+                  primary={`${plugin.name} ${(plugin.version === "Unknown")  ? "" : "(" + plugin.version + ")"}`}
+                  primaryTypographyProps={{style: {fontSize: '0.95rem'}}}
+                  secondary={
+                   <>
+                    <Typography
+                      sx={{ display: 'block', fontStyle: "italic" }}
+                      component="span"
+                      variant="body2"
+                      color="text.primary"
+                    >
+                      {plugin.author || "unknown author"}
+                    </Typography>
+                    <span>{`${plugin.description === "Unknown" ? "No description provided." : plugin.description}`}</span>
+                   </>
+                  }
+                  style={{maxWidth: "525px"}}
+                />
+                <ListItemSecondaryAction sx={{display: {xs: 'contents', md: 'block'}}}>
                   <Button
-                    component={Link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    to={plugin.homepage.replace(/^https?:\/\/127\.0\.0\.1(?::\d+)?/, '')} // this is a hack since the leader will produce a homepage with it's leader_address which is 127.0.0.1.
+                    onClick={uninstallPlugin(plugin.source.startsWith("plugins/") ? plugin.source.slice(8, -3) : plugin.name)}
                     variant="text"
                     size="small"
-                    color="primary"
-                    aria-label="view homepage"
-                    disabled={!plugin.homepage || (plugin.homepage === "Unknown")}
-                    endIcon={<OpenInNewIcon />}
-                    sx={{ml: "15px", textTransform: 'none'}}
+                    color="secondary"
+                    aria-label="delete"
+                    style={{textTransform: 'none'}}
+                    endIcon={<DeleteIcon />}
+                    sx={{ml: "3px"}}
                   >
-                    View
+                    Uninstall
                   </Button>
-              </ListItemSecondaryAction>
-            </ListItem>,
-          )}
-        </List>
-      </Box>
-      <Snackbar
-        anchorOrigin={{vertical: "bottom", horizontal: "center"}}
-        open={snackbarOpen}
-        onClose={handleSnackbarClose}
-        message={snackbarMsg}
-        autoHideDuration={7000}
-        key="snackbar-installation"
-      />
+                    <Button
+                      component={Link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      to={plugin.homepage.replace(/^https?:\/\/127\.0\.0\.1(?::\d+)?/, '')} // this is a hack since the leader will produce a homepage with it's leader_address which is 127.0.0.1.
+                      variant="text"
+                      size="small"
+                      color="primary"
+                      aria-label="view homepage"
+                      disabled={!plugin.homepage || (plugin.homepage === "Unknown")}
+                      endIcon={<OpenInNewIcon />}
+                      sx={{ml: "15px", textTransform: 'none'}}
+                    >
+                      View
+                    </Button>
+                </ListItemSecondaryAction>
+              </ListItem>,
+            )}
+          </List>
+        </Box>
+        <Snackbar
+          anchorOrigin={{vertical: "bottom", horizontal: "center"}}
+          open={snackbarOpen}
+          onClose={handleSnackbarClose}
+          message={snackbarMsg}
+          autoHideDuration={7000}
+          key="snackbar-installation"
+        />
       </React.Fragment>
-    )
+    );
   }
   else {
     return (
@@ -391,9 +390,12 @@ function ListInstalledPlugins({selectedUnit, installedPlugins}){
 
 function PluginContainer(){
 
+  const {pioreactorUnit} = useParams();
+  const navigate = useNavigate();
+
   const [installedPlugins, setInstalledPlugins] = React.useState([])
   const [isFetchComplete, setIsFetchComplete] = React.useState(false)
-  const [selectedUnit, setSelectedUnit] = React.useState("")
+  const [selectedUnit, setSelectedUnit] = React.useState(pioreactorUnit || "")
   const [units, setUnits] = React.useState([])
 
   React.useEffect(() => {
@@ -440,7 +442,7 @@ function PluginContainer(){
         })
         .then((data) => {
           setUnits(data.map((unit) => unit.pioreactor_unit))
-          setSelectedUnit(data[0].pioreactor_unit)
+          setSelectedUnit(selectedUnit || data[0].pioreactor_unit)
         });
       }
       getUnits()
@@ -448,6 +450,7 @@ function PluginContainer(){
 
   const onSelectionChange = (e) => {
     setSelectedUnit(e.target.value)
+    navigate(`/plugins/${e.target.value}`)
   }
 
   return(
@@ -511,13 +514,17 @@ function Plugins(props) {
     document.title = props.title;
   }, [props.title])
     return (
-        <Grid container spacing={2} >
-          <Grid item md={12} xs={12}>
-            <PageHeader/>
-            <PluginContainer/>
-          </Grid>
+      <Grid container spacing={2} >
+        <Grid
+          size={{
+            md: 12,
+            xs: 12
+          }}>
+          <PageHeader/>
+          <PluginContainer/>
         </Grid>
-    )
+      </Grid>
+    );
 }
 
 

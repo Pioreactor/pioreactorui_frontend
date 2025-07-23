@@ -75,7 +75,7 @@ const SelectableMenuItem = ({experiment, availableExperiments, selectExperiment}
           setActiveExperiments(new Set(data.map(item => item.experiment)))
         })
       }
-    getActiveExperiments()
+    setTimeout(getActiveExperiments, 100)
   }, [])
 
   const handleMenuItemClick = (e) => {
@@ -197,21 +197,22 @@ export default function SideNavAndHeader() {
       }
 
     async function getLatestVersion() {
-         // TODO: what happens when there is not internet connection?
-         await fetch("https://api.github.com/repos/pioreactor/pioreactor/releases/latest")
-        .then((response) => {
-          return response.json();
-        })
-        .then((data) => {
-          setLatestVersion(data['tag_name'])
-        }).catch(e => {
-          // no internet?
-        });
-      }
+       // TODO: what happens when there is not internet connection?
+       await fetch("https://api.github.com/repos/pioreactor/pioreactor/releases/latest")
+      .then((response) => {
+        return response.json();
+      })
+      .then((data) => {
+        setLatestVersion(data['tag_name'])
+      }).catch(e => {
+        // no internet?
+      });
+    }
 
-    getCurrentApp()
-    getLatestVersion()
-    getLAP()
+     // ping these later, it's not important on render
+    setTimeout(getLAP, 500)
+    setTimeout(getCurrentApp, 1500)
+    setTimeout(getLatestVersion, 2000)
 
   }, [])
 
@@ -224,7 +225,11 @@ export default function SideNavAndHeader() {
   };
 
   function isSelected(path) {
-    return (location.pathname === path)
+    return (location.pathname.startsWith(path))
+  }
+
+  function isOpen(path) {
+    return (openSubmenu.startsWith(path))
   }
 
 
@@ -247,7 +252,7 @@ export default function SideNavAndHeader() {
                     fontWeight: active ? 500 : 450,
                   };
                   if (level === 1){
-                    sx.paddingLeft = "58px"
+                    sx.paddingLeft = "27px"
                     sx.color = disabled ? '#00000050' : (active ? '#5331ca' : 'rgb(75, 75, 75)')
                     sx.fontWeight = active ? 500 : 400
                   }
@@ -258,7 +263,8 @@ export default function SideNavAndHeader() {
                     color: disabled ? '#00000050' : (active ? '#5331ca' : 'rgba(0,0,0, 0.6)'),
                     marginRight: "8px",
                     minWidth: "30px",
-                    width: "30px"
+                    width: "30px",
+                    visibility: (( (level===1 && active) || level===0)  ? "visible" : "hidden")
                   };
                 }
               }}
@@ -272,18 +278,17 @@ export default function SideNavAndHeader() {
               <MenuItem
                 icon={<DashboardOutlinedIcon sx={{fontSize: "23px"}}/>}
                 component={<Link to="/overview" className="link" />}
-                active={(isSelected("/") || isSelected("/overview"))}
+                active={(location.pathname === "/" || isSelected("/overview"))}
 
                 >
                 Overview
               </MenuItem>
 
               <SubMenu
-                open={openSubmenu==="pioreactors" || openSubmenu==="logs"}
+                open={isOpen("pioreactors") || isOpen("logs")}
                 icon={<PioreactorIcon  sx={{fontSize: "23px"}}/>}
                 component={<Link to="/pioreactors" className="link" />}
                 active={isSelected("/pioreactors")}
-
                 label={"Pioreactors"}
                 >
                 <MenuItem
@@ -337,7 +342,7 @@ export default function SideNavAndHeader() {
                     fontWeight: active ? 500 : 400,
                   };
                   if (level === 1){
-                    sx.paddingLeft = "58px"
+                    sx.paddingLeft = "27px"
                     sx.color = disabled ? '#00000050' : (active ? '#5331ca' : 'rgb(75, 75, 75)')
                     sx.fontWeight = active ? 500 : 400
                   }
@@ -348,24 +353,25 @@ export default function SideNavAndHeader() {
                     color: disabled ? '#00000050' : (active ? '#5331ca' : 'rgba(0,0,0, 0.6)'),
                     marginRight: "8px",
                     minWidth: "30px",
-                    width: "30px"
+                    width: "30px",
+                    visibility: (( (level===1 && active) || level===0)  ? "visible" : "hidden")
+
                   };
                 }
               }}
             >
 
                 <MenuItem
-                  open={openSubmenu==="config"}
                   icon={<SettingsOutlinedIcon sx={{fontSize: "23px"}}/> }
                   component={<Link to="/config" className="link" />}
                   active={isSelected("/config")}
 
                 >
-                Configuration
+                  Configuration
                 </MenuItem>
 
                 <SubMenu label="Inventory"
-                  open={openSubmenu==="inventory" || openSubmenu==="leader"}
+                  open={isOpen("inventory") || isOpen("leader") || isOpen("system-logs")}
                   icon={<PioreactorsIcon sx={{fontSize: "23px"}} />}
                   component={<Link to="/inventory" className="link" />}
                   active={isSelected("/inventory")}
@@ -377,6 +383,13 @@ export default function SideNavAndHeader() {
                     icon={<SubdirectoryArrowRightIcon  sx={{fontSize: "23px"}}/>}
                     >
                     Leader
+                  </MenuItem>
+                  <MenuItem
+                    component={<Link to="/system-logs" className="link" />}
+                    active={isSelected("/system-logs")}
+                    icon={<SubdirectoryArrowRightIcon  sx={{fontSize: "23px"}}/>}
+                    >
+                    System logs
                   </MenuItem>
 
                 </SubMenu>
@@ -450,8 +463,8 @@ export default function SideNavAndHeader() {
 
               <Typography variant="h6"  sx={{ flexGrow: 1 }}>
                 <Link color="inherit" underline="none" to="/" >
-                  <img alt="pioreactor logo" src="/white_colour.png" style={{width: "120px", height: "29px"}}/> <
-                /Link>
+                  <img alt="pioreactor logo" src="/white_colour.png" style={{width: "120px", height: "29px"}}/>
+                </Link>
               </Typography>
 
 

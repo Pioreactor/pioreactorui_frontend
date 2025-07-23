@@ -40,6 +40,7 @@ class Chart extends React.Component {
     };
 
     this.topics = toArray(this.props.topic)
+    this.subscribedTopics = []
     this.onMessage = this.onMessage.bind(this);
     this.selectLegendData = this.selectLegendData.bind(this);
     this.selectVictoryLines = this.selectVictoryLines.bind(this);
@@ -49,16 +50,22 @@ class Chart extends React.Component {
   }
 
   componentDidUpdate(prevProps) {
-    if (prevProps.experiment !== this.props.experiment) {
+    const experimentChanged = prevProps.experiment !== this.props.experiment
+    const topicChanged = prevProps.topic !== this.props.topic
+
+    if (experimentChanged || topicChanged) {
       this.getHistoricalDataFromServer()
       if (this.props.isLiveChart && this.props.client){
-          toArray(prevProps.topic).forEach(topic => {
-            this.props.unsubscribeFromTopic(`pioreactor/+/${prevProps.experiment}/${topic}`, "Chart")
-          });
+        this.subscribedTopics.forEach(topic => {
+          this.props.unsubscribeFromTopic(topic, "Chart")
+        })
 
-          this.topics.forEach(topic => {
-            this.props.subscribeToTopic(`pioreactor/+/${this.props.experiment}/${topic}`, this.onMessage, "Chart")
-          });
+        this.topics = toArray(this.props.topic)
+        const newTopics = this.topics.map(topic => `pioreactor/+/${this.props.experiment}/${topic}`)
+        newTopics.forEach(topic => {
+          this.props.subscribeToTopic(topic, this.onMessage, "Chart")
+        })
+        this.subscribedTopics = newTopics
       }
     }
 
@@ -70,20 +77,24 @@ class Chart extends React.Component {
       this.getHistoricalDataFromServer()
     }
 
-    if (this.props.isLiveChart && this.props.client){
-      this.topics.forEach(topic => {
-        this.props.subscribeToTopic(`pioreactor/+/${this.props.experiment}/${topic}`, this.onMessage, "Chart")
-      });
-    }
-
   }
 
   componentDidMount() {
     this.getHistoricalDataFromServer()
     if (this.props.client && this.props.isLiveChart) {
-      this.topics.forEach(topic => {
-        this.props.subscribeToTopic(`pioreactor/+/${this.props.experiment}/${topic}`, this.onMessage, "Chart")
-      });
+      const topicPaths = this.topics.map(topic => `pioreactor/+/${this.props.experiment}/${topic}`)
+      topicPaths.forEach(topic => {
+        this.props.subscribeToTopic(topic, this.onMessage, "Chart")
+      })
+      this.subscribedTopics = topicPaths
+    }
+  }
+
+  componentWillUnmount() {
+    if (this.props.client) {
+      this.subscribedTopics.forEach(topic => {
+        this.props.unsubscribeFromTopic(topic, "Chart")
+      })
     }
   }
 
@@ -108,7 +119,15 @@ class Chart extends React.Component {
       transformX = (x) => dayjs.utc(x, 'YYYY-MM-DDTHH:mm:ss.SSS').local()
     }
 
-    await fetch(`/api/experiments/${this.props.experiment}/time_series/${this.props.dataSource}${this.props.dataSourceColumn ? "/" + this.props.dataSourceColumn : ""}?${queryParams}`)
+    var url;
+    if (this.props.unit){
+      url = `/api/workers/${this.props.unit}/experiments/${this.props.experiment}/time_series/${this.props.dataSource}${this.props.dataSourceColumn ? "/" + this.props.dataSourceColumn : ""}?${queryParams}`
+    }
+    else {
+      url = `/api/experiments/${this.props.experiment}/time_series/${this.props.dataSource}${this.props.dataSourceColumn ? "/" + this.props.dataSourceColumn : ""}?${queryParams}`
+    }
+
+    await fetch(url)
       .then((response) => {
         return response.json();
       })
@@ -200,9 +219,8 @@ class Chart extends React.Component {
       return
     }
 
-    if (!message){
-      return
-    }
+    if (!message || !topic) return;
+
 
     if (!message.toString()){
       return
@@ -227,9 +245,8 @@ class Chart extends React.Component {
     var duration = Math.round(timestamp.diff(dayjs.utc(this.props.experimentStartTime), 'hours', true) * 1e3)/1e3
     var local_timestamp = timestamp.local()
     const x_value = this.props.byDuration ? duration : local_timestamp
-
     var unit = this.props.isPartitionedBySensor
-      ? topic.split("/")[1] + "-" + (topic.split("/")[4]).replace('od', '')
+      ? topic.split("/")[1] + "-" + (topic.split("/")[4]).replace('raw_od', '').replace('od', '')
       : topic.split("/")[1];
 
     if (this.props.unit){
@@ -242,24 +259,22 @@ class Chart extends React.Component {
     }
 
     try {
-      if (!(unit in this.state.seriesMap)){
-        const newSeriesMap = {...this.state.seriesMap, [unit]:  {
-          data: [{x: x_value, y: y_value}],
-          name: unit,
-          color: this.getUnitColor(unit)
-        }}
-
-        this.setState({ seriesMap: newSeriesMap })
-        this.setState({
-          names: [...this.state.names, unit]
-        })
+      if (!(unit in this.state.seriesMap)) {
+        const newSeriesMap = {
+          ...this.state.seriesMap,
+          [unit]: {
+            data: [{ x: x_value, y: y_value }],
+            name: unit,
+            color: this.getUnitColor(unit),
+          },
+        };
+        this.setState({ seriesMap: newSeriesMap, names: [...this.state.names, unit] });
       } else {
-        // .push seems like bad state management, and maybe a hit to performance...
         this.state.seriesMap[unit].data.push({
           x: x_value,
           y: y_value,
         });
-        this.setState({ seriesMap: this.state.seriesMap })
+        this.setState({ seriesMap: this.state.seriesMap });
       }
     }
     catch (error) {
@@ -295,6 +310,7 @@ class Chart extends React.Component {
 
   createToolTip = (d) => {
     var x_value
+    let seriesLabel = d.datum.childName || "unknown";
     try {
       if (this.props.byDuration) {
         x_value = `${d.datum.x.toFixed(2)} hours elapsed`
@@ -306,7 +322,7 @@ class Chart extends React.Component {
     }
 
     return `${x_value}
-${this.relabelAndFormatSeries(d.datum.childName)}: ${Math.round(this.yTransformation(d.datum.y) * 10 ** this.props.fixedDecimals) / 10 ** this.props.fixedDecimals}`
+${this.relabelAndFormatSeries(seriesLabel)}: ${Math.round(this.yTransformation(d.datum.y) * 10 ** this.props.fixedDecimals) / 10 ** this.props.fixedDecimals}`
   }
 
 
@@ -500,7 +516,7 @@ ${this.relabelAndFormatSeries(d.datum.childName)}: ${Math.round(this.yTransforma
               labels: { fontSize: 13 },
               data: { stroke: "#485157", strokeWidth: 0.5, size: 6.5 },
             }}
-            data={this.state.names.map(this.selectLegendData)}
+            data={this.state.names.map(this.selectLegendData).filter(item => item && item.name)}
           />
           {Object.keys(this.state.seriesMap).map(this.selectVictoryLines)}
         </VictoryChart>

@@ -2,7 +2,7 @@ import React from 'react'
 import dayjs from "dayjs";
 //import dayjs from "dayjs";
 import Card from '@mui/material/Card';
-import CardContent from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
 import {Typography} from '@mui/material';
 import Box from '@mui/material/Box';
 import OutlinedInput from '@mui/material/OutlinedInput';
@@ -46,10 +46,6 @@ class EditableDescription extends React.Component {
         }).then(res => {
           if (res.ok){
             this.props.updateExperiment({ ...this.props.experimentMetadata, description: this.state.desc });
-          }
-          else {
-            console.log("Didn't save successfully.")
-
           }
         })
         this.setState({savingLoopActive: false})

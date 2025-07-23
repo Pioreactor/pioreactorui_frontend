@@ -2,6 +2,8 @@ import dayjs from 'dayjs';
 
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from "react-router-dom";
+import IconButton from '@mui/material/IconButton';
+import CloseIcon from '@mui/icons-material/Close';
 import {
   CircularProgress,
   FormControl,
@@ -9,25 +11,227 @@ import {
   Select,
   Typography,
   Divider,
+  TextField,
+  Dialog,
+  DialogTitle,
+  DialogContent,
 } from '@mui/material';
 import Grid from "@mui/material/Grid";
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
-import CardContent from '@mui/material/Card';
-import {checkTaskCallback, colors, DefaultDict} from "./utilities"
+import CardContent from '@mui/material/CardContent';
+import {checkTaskCallback, colors, ColorCycler} from "./utilities"
 import CalibrationChart from "./components/CalibrationChart"
 import FormLabel from '@mui/material/FormLabel';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Switch from '@mui/material/Switch';
-import { Table, TableBody, TableCell, TableHead, TableRow } from '@mui/material';
+import { Table, TableBody, TableCell, TableHead, TableRow, TableContainer } from '@mui/material';
 import Chip from '@mui/material/Chip';
 import Button from '@mui/material/Button';
-import GetAppIcon from '@mui/icons-material/GetApp';
-
+import UploadIcon from '@mui/icons-material/Upload';
+import DownloadIcon from '@mui/icons-material/Download';
 import PioreactorIcon from "./components/PioreactorIcon"
 import PioreactorsIcon from './components/PioreactorsIcon';
 import TuneIcon from '@mui/icons-material/Tune';
 import CheckCircleOutlineOutlinedIcon from '@mui/icons-material/CheckCircleOutlineOutlined';
+import {readyGreen} from "./utilities"
+
+import Editor from 'react-simple-code-editor';
+import { highlight, languages } from 'prismjs';
+import 'prismjs/components/prism-yaml';
+import CheckIcon from '@mui/icons-material/Check';
+
+
+export function sanitizeDeviceName(raw) {
+  const cleaned = raw
+    .replace(/\s+/g, "_")          // spaces, tabs, line‑breaks → “_”
+    .replace(/[^A-Za-z0-9_-]/g, "") // drop everything else (only allow these chars)
+    .replace(/^[_.]+/, "")           // no leading “.” or “_”
+    .slice(0, 255);                // extra‑long names are sliced
+
+  return cleaned;
+}
+
+function UploadCalibrationDialog({
+  open,
+  onClose,
+}) {
+  const { pioreactorUnit, device } = useParams();
+
+  const [workers, setWorkers] = useState([])
+  const [selectedWorker, setSelectedWorker] = useState(pioreactorUnit || '$broadcast');
+  const [selectedDevice, setSelectedDevice] = useState(device || '');
+  const [calibrationYaml, setCalibrationYaml] = useState('');
+  const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
+
+  const handleUploadCalibration = async () => {
+    setError(null);
+    setSuccess(null);
+    try {
+      const requestBody = {
+        calibration_data: calibrationYaml
+      };
+
+      const response = await fetch(`/api/workers/${selectedWorker}/calibrations/${selectedDevice}`, {
+        method: 'POST',
+        headers: {
+          // Note: "application/json" since endpoint only accepts JSON
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        setError(error.error);
+        return
+      }
+
+      // Optionally clear fields so user can enter another calibration easily:
+      setCalibrationYaml('');
+      setSuccess(
+        <span>
+          Calibration sent to Pioreactor(s). Add another calibration, or{' '}
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            style={{
+              background: 'none',
+              border: 'none',
+              padding: 0,
+              color: 'inherit',
+              textDecoration: 'underline',
+              cursor: 'pointer',
+            }}
+          >
+            refresh
+          </button>{' '}
+          the page to see updates.
+        </span>
+      );
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  useEffect(() => {
+    const fetchWorkers = async () => {
+      try {
+        const response = await fetch('/api/workers');
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        const data = await response.json();
+        setWorkers(data.map(worker => worker.pioreactor_unit));
+      } catch (err) {
+        console.error('Error fetching workers:', err);
+      }
+    };
+
+    fetchWorkers();
+  }, []);
+
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth aria-labelledby="form-dialog-title">
+      <DialogTitle>
+      Upload calibration from a YAML description
+
+        <IconButton
+          aria-label="close"
+          onClick={onClose}
+          sx={{
+            position: 'absolute',
+            right: 8,
+            top: 8,
+            color: (theme) => theme.palette.grey[500],
+          }}
+          size="large">
+          <CloseIcon />
+        </IconButton>
+
+      </DialogTitle>
+      <DialogContent>
+        <Box sx={{ mb: 2 }}>
+          <FormControl variant="standard" sx={{ mr: 4, minWidth: 200 }}>
+            <FormLabel component="legend">Pioreactor</FormLabel>
+            <Select
+              value={selectedWorker}
+              onChange={(e) => setSelectedWorker(e.target.value)}
+            >
+              {workers.map((worker) => (
+                <MenuItem key={worker} value={worker}>
+                  {worker}
+                </MenuItem>
+              ))}
+              {workers.length > 1 &&
+              <MenuItem  value={"$broadcast"}>
+                <PioreactorsIcon fontSize="small" sx={{verticalAlign: "middle", margin: "0px 4px"}} /> All Pioreactors
+              </MenuItem>
+              }
+            </Select>
+          </FormControl>
+
+          <FormControl variant="standard" sx={{ mr: 4, minWidth: 200 }}>
+            <FormLabel component="legend">Device</FormLabel>
+            <TextField
+              variant="standard"
+              fullWidth
+              placeholder="e.g. od, media_pump"
+              value={selectedDevice}
+              onChange={(e) => setSelectedDevice(sanitizeDeviceName(e.target.value))}
+            />
+          </FormControl>
+        </Box>
+
+        <FormLabel component="legend">YAML description</FormLabel>
+        <Box sx={{
+            tabSize: "4ch",
+            border: "1px solid #ccc",
+            margin: "5px 0px 10px 0px",
+            position: "relative",
+            width: "100%",
+            height: "350px",
+            overflow: "auto",
+            borderRadius: "4px",
+            flex: 1
+          }}>
+          <Editor
+            value={calibrationYaml}
+            onValueChange={setCalibrationYaml}
+            highlight={_ => highlight(calibrationYaml, languages.yaml)}
+            padding={10}
+            style={{
+              fontSize: "14px",
+              fontFamily: 'monospace',
+              backgroundColor: "hsla(0, 0%, 100%, .5)",
+              borderRadius: "4px",
+              minHeight: "100%"
+            }}
+          />
+        </Box>
+
+
+        <Box sx={{display: "flex", justifyContent: "space-between"}}>
+          <Box>
+          {error && <Box color="error.main">
+          {error}
+          </Box>
+          }
+          {success && <Box>
+          <CheckIcon sx={{verticalAlign: "middle", margin: "0px 3px", color: readyGreen}}/> {success}
+          </Box>
+          }
+          </Box>
+          <Button onClick={handleUploadCalibration} variant="contained" sx={{marginTop: "10px", textTransform: 'none'}} disabled={!selectedDevice || !calibrationYaml || !selectedWorker}>
+            Upload
+          </Button>
+        </Box>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 
 
 function CalibrationCard(){
@@ -55,7 +259,7 @@ const ActiveOrNotCheckBox = ({onlyActive, setOnlyActive}) => {
 
 
 function CalibrationData() {
-  const { pioreactor_unit, device } = useParams();
+  const { pioreactorUnit, device } = useParams();
 
   const [loading, setLoading] = useState(true);
   const [rawData, setRawData] = useState(null);
@@ -63,10 +267,13 @@ function CalibrationData() {
   const [workers, setWorkers] = useState([]);
   const [calibrationDataByDevice, setCalibrationDataByDevice] = useState({});
   const [selectedDevice, setSelectedDevice] = useState(device || '');
-  const [selectedUnit, setSelectedUnit] = useState(pioreactor_unit || '$broadcast');
-  const [onlyActive, setOnlyActive] = useState(true);
+  const [selectedUnit, setSelectedUnit] = useState(pioreactorUnit || '$broadcast');
+  const [onlyActive, setOnlyActive] = useState(false);
   const [highlightedModel, setHighlightedModel] = useState({pioreactorUnit: null, calibrationName: null});
-  const unitsColorMap = new DefaultDict(colors)
+  const unitsColorMap = React.useMemo(
+    () => new ColorCycler(colors),
+    []
+  );
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -130,10 +337,12 @@ function CalibrationData() {
 
   const handleSelectDeviceChange = (event) => {
     setSelectedDevice(event.target.value);
+    navigate(`/calibrations/${selectedUnit}/${event.target.value}`);
   };
 
   const handleSelectUnitChange = (event) => {
     setSelectedUnit(event.target.value);
+    navigate(`/calibrations/${event.target.value}/${selectedDevice}`);
   };
 
   const handleOnlyActiveChange = (event) => {
@@ -153,7 +362,7 @@ function CalibrationData() {
     return <Typography>Something went wrong or data is incomplete. Check web server logs.</Typography>;
   }
 
-  // filter calibrations to active if onlyActive is true, and by pioreactor_unit if selectedUnit is not $broadcast
+  // filter calibrations to active if onlyActive is true, and by pioreactorUnit if selectedUnit is not $broadcast
   const filteredCalibrations = (calibrationDataByDevice[selectedDevice] || []).filter((cal) => {
     const allUnits = (selectedUnit === '$broadcast');
 
@@ -173,7 +382,7 @@ function CalibrationData() {
       // Case 4: Selected unit, regardless of activity
       return cal.pioreactor_unit === selectedUnit;
     }
-    return
+    return false
   }).sort((a, b) => {
   // Compare `is_active` (true first, false later)
   if (a.is_active !== b.is_active) {
@@ -212,7 +421,7 @@ function CalibrationData() {
                   </MenuItem>
                 ))}
                   <MenuItem  value={"$broadcast"}>
-                    <PioreactorsIcon fontSize="15" sx={{verticalAlign: "middle", margin: "0px 4px"}} /> All Pioreactors
+                    <PioreactorsIcon fontSize="small" sx={{verticalAlign: "middle", margin: "0px 4px"}} /> All Pioreactors
                   </MenuItem>
               </Select>
             </FormControl>
@@ -251,7 +460,7 @@ function CalibrationData() {
         </Box>
       </Box>
 
-      <Box sx={{px: 5, mt: 1, mb: 1}}>
+      <TableContainer sx={{px: 5, mt: 1, mb: 1,  width: "100%", overflowY: "auto", overflowX: 'auto',}}>
         <Table size="small">
           <TableHead>
             <TableRow>
@@ -308,13 +517,15 @@ function CalibrationData() {
             })}
           </TableBody>
         </Table>
-      </Box>
+      </TableContainer>
     </Box>
   );
 }
 
 
-function CalibrationsContainer(props) {
+function CalibrationsContainer() {
+
+  const [openUploadDialog, setOpenUploadDialog] = useState(false);
 
   const handleDownloadCalibrations = async () => {
     try {
@@ -346,7 +557,6 @@ function CalibrationsContainer(props) {
 
   return (
     <React.Fragment>
-
       <Box>
         <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
           <Typography variant="h5" component="h2">
@@ -355,21 +565,34 @@ function CalibrationsContainer(props) {
             </Box>
           </Typography>
           <Box sx={{display: "flex", flexDirection: "row", justifyContent: "flex-start", flexFlow: "wrap"}}>
+            <Button style={{textTransform: 'none', marginRight: "0px", float: "right"}}
+                    color="primary"
+                    onClick={() => setOpenUploadDialog(true)}
+            >
+              <UploadIcon fontSize="small"/> Upload calibration
+            </Button>
             <Button style={{textTransform: 'none', marginRight: "0px", float: "right"}} color="primary" onClick={handleDownloadCalibrations}>
-              <GetAppIcon fontSize="15"/> Download all calibrations
+              <DownloadIcon fontSize="small"/> Download all calibrations
             </Button>
           </Box>
         </Box>
         <Divider sx={{marginTop: "0px", marginBottom: "15px"}} />
 
       </Box>
-
+      <UploadCalibrationDialog
+        open={openUploadDialog}
+        onClose={() => setOpenUploadDialog(false)}
+      />
       <Grid container spacing={2} >
-        <Grid item xs={12} sm={12}>
+        <Grid
+          size={{
+            xs: 12,
+            sm: 12
+          }}>
           <CalibrationCard/>
         </Grid>
       </Grid>
-      <Grid item xs={12}>
+      <Grid size={12}>
         <p style={{textAlign: "center", marginTop: "30px"}}>Learn more about <a href="https://docs.pioreactor.com/user-guide/hardware-calibrations" target="_blank" rel="noopener noreferrer">calibrations</a>.</p>
       </Grid>
     </React.Fragment>
@@ -381,12 +604,16 @@ function Calibrations(props) {
       document.title = props.title;
     }, [props.title]);
     return (
-        <Grid container spacing={2} >
-          <Grid item md={12} xs={12}>
-            <CalibrationsContainer/>
-          </Grid>
+      <Grid container spacing={2} >
+        <Grid
+          size={{
+            md: 12,
+            xs: 12
+          }}>
+          <CalibrationsContainer/>
         </Grid>
-    )
+      </Grid>
+    );
 }
 
 export default Calibrations;

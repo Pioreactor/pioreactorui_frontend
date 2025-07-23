@@ -2,7 +2,7 @@ import React, {useEffect, useState} from "react";
 
 import Grid from '@mui/material/Grid';
 import Card from '@mui/material/Card';
-import CardContent from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
 import FormControl from '@mui/material/FormControl';
 import LoadingButton from '@mui/lab/LoadingButton';
 import FormLabel from '@mui/material/FormLabel';
@@ -251,12 +251,16 @@ function EditConfig(props) {
       document.title = props.title;
     }, [props.title])
     return (
-        <Grid container spacing={2} >
-          <Grid item md={12} xs={12}>
-             <EditConfigContainer/>
-          </Grid>
+      <Grid container spacing={2} >
+        <Grid
+          size={{
+            md: 12,
+            xs: 12
+          }}>
+           <EditConfigContainer/>
         </Grid>
-    )
+      </Grid>
+    );
 }
 
 export default EditConfig;

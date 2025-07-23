@@ -54,6 +54,7 @@ function RecordEventLogDialog({
 
 
   const handleOpenDialog = () => {
+    setTimestampLocal(dayjs().local().format('YYYY-MM-DD HH:mm:ss'))
     setOpenDialog(true);
   };
 
@@ -68,7 +69,7 @@ function RecordEventLogDialog({
       color="primary"
       onClick={handleOpenDialog}
     >
-      <AddIcon fontSize="15" sx={{verticalAlign: "middle", margin: "0px 3px"}} /> Record a new event
+      <AddIcon fontSize="small" sx={{verticalAlign: "middle", margin: "0px 3px"}} /> Record new event
     </Button>
     <Dialog open={openDialog} onClose={onClose} fullWidth maxWidth="sm">
       <DialogTitle sx={{ mb: 2 }}>
@@ -104,7 +105,7 @@ function RecordEventLogDialog({
               {availableUnits.map((unit) => (
                 <MenuItem key={unit} value={unit}>{unit}</MenuItem>
               ))}
-              <MenuItem value="$broadcast"><PioreactorsIcon fontSize="15" sx={{verticalAlign: "middle", margin: "0px 4px"}} /> All Pioreactors </MenuItem>
+              <MenuItem value="$broadcast"><PioreactorsIcon fontSize="small" sx={{verticalAlign: "middle", margin: "0px 4px"}} /> All Pioreactors </MenuItem>
             </Select>
           </FormControl>
           <FormControl required size="small" variant="outlined" sx={{ flex: 1 }}>
@@ -116,7 +117,6 @@ function RecordEventLogDialog({
               onChange={(e) => setSelectedExperiment(e.target.value)}
             >
               <MenuItem value={defaultExperiment}>{defaultExperiment}</MenuItem>
-              <MenuItem value="$experiment">&lt;All experiments&gt;</MenuItem>
             </Select>
           </FormControl>
         </Box>

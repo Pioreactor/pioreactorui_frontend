@@ -7,7 +7,7 @@ import Button from "@mui/material/Button";
 import {Typography} from '@mui/material';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
-import CardContent from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
 import SaveIcon from '@mui/icons-material/Save';
 import TextField from '@mui/material/TextField';
 import { Link, useParams } from 'react-router-dom';
@@ -15,7 +15,7 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import Snackbar from '@mui/material/Snackbar';
 import Editor from 'react-simple-code-editor';
 import { highlight, languages } from 'prismjs';
-import 'prismjs/components/prism-yaml'; // You can add more languages or change it
+import 'prismjs/components/prism-yaml';
 import {DisplayProfile, DisplayProfileError} from "./components/DisplayProfile"
 
 function addQuotesToBrackets(input) {
@@ -33,7 +33,6 @@ function convertYamlToJson(yamlString){
   } catch (error) {
     if (["duplicated mapping key"].includes(error.reason)) {
       console.log(error)
-      console.log(yamlString)
       return {error: error.message}
     }
     else {
@@ -79,25 +78,28 @@ const EditExperimentProfilesContent = ({ initialCode, profileFilename }) => {
   const saveCurrentCode = () => {
 
     setIsError(false);
-    setIsChanged(false);
     fetch("/api/contrib/experiment_profiles", {
       method: "PATCH",
-      body: JSON.stringify({ body: code, filename: profileFilename  }),
+      body: JSON.stringify({ body: code, filename: profileFilename }),
       headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json'
       }
     })
       .then(res => {
-        if (res.ok) {
-          setOpenSnackbar(true);
-          setSnackbarMsg(`Experiment profile ${profileFilename} saved.`);
-        } else {
-          res.json().then(parsedJson => {
-            setIsError(true);
-            setErrorMsg(parsedJson.error);
+        if (!res.ok) {
+          return res.json().then(parsedJson => {
+            throw new Error(parsedJson.error || 'Failed to save profile');
           });
         }
+        setIsChanged(false);
+        setOpenSnackbar(true);
+        setSnackbarMsg(`Experiment profile ${profileFilename} saved.`);
+      })
+      .catch(err => {
+        setIsError(true);
+        setErrorMsg(err.message || 'Network error: failed to save profile');
+        setIsChanged(true);
       });
   };
 
@@ -113,7 +115,7 @@ const EditExperimentProfilesContent = ({ initialCode, profileFilename }) => {
     <>
       <Grid container spacing={0}>
 
-        <Grid item xs={12}>
+        <Grid size={12}>
           <div style={{ width: "100%", margin: "10px", display: "flex", justifyContent: "space-between" }}>
             <TextField
               label="Filename"
@@ -124,7 +126,7 @@ const EditExperimentProfilesContent = ({ initialCode, profileFilename }) => {
           </div>
         </Grid>
 
-        <Grid item xs={6}>
+        <Grid size={6}>
           <div style={{
             tabSize: "4ch",
             border: "1px solid #ccc",
@@ -152,11 +154,11 @@ const EditExperimentProfilesContent = ({ initialCode, profileFilename }) => {
           </div>
         </Grid>
 
-        <Grid item xs={6}>
+        <Grid size={6}>
           {code && displayedProfile()}
         </Grid>
 
-        <Grid item xs={12}>
+        <Grid size={12}>
           <div style={{ display: "flex", justifyContent: "space-between" }}>
             <div>
               <Button
@@ -169,7 +171,6 @@ const EditExperimentProfilesContent = ({ initialCode, profileFilename }) => {
               >
                 Save
               </Button>
-              {console.log(errorMsg, isError)}
               <p style={{ marginLeft: "10px" }}>{isError ? <Box color="error.main">{errorMsg}</Box> : ""}</p>
             </div>
           </div>
@@ -231,12 +232,16 @@ function EditProfile(props) {
       document.title = props.title;
     }, [props.title]);
     return (
-        <Grid container spacing={2} >
-          <Grid item md={12} xs={12}>
-            <ProfilesContainer />
-          </Grid>
+      <Grid container spacing={2} >
+        <Grid
+          size={{
+            md: 12,
+            xs: 12
+          }}>
+          <ProfilesContainer />
         </Grid>
-    )
+      </Grid>
+    );
 }
 
 export default EditProfile;

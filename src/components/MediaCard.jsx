@@ -59,6 +59,8 @@ function MediaCard({experiment, relabelMap, activeUnits}) {
   }
 
   function onMessage(topic, message, packet) {
+    if (!message || !topic) return;
+
     const topicParts = topic.toString().split('/');
     const payload = parseFloat(message.toString());
     const unit = topicParts[1];
@@ -89,7 +91,7 @@ function MediaCard({experiment, relabelMap, activeUnits}) {
   }
 
   return (
-    <Card style={{ marginBottom: '6px' }}>
+    <Card>
       <CardContent sx={{ p: 2 }}>
         <Typography variant="h6" component="h2">
           <Box fontWeight="fontWeightRegular">Dosing</Box>
@@ -100,7 +102,7 @@ function MediaCard({experiment, relabelMap, activeUnits}) {
         )}
 
         {activeUnits.length > 0 && (
-        <TableContainer sx={{ maxHeight: '400px', width: '100%', overflowY: 'auto' }}>
+        <TableContainer sx={{ maxHeight: '300px', width: '100%', overflowY: 'auto' }}>
           <Table size="small" aria-label="media throughput">
             <TableHead>
               <TableRow>

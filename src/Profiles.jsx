@@ -9,36 +9,29 @@ import {Typography} from '@mui/material';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import Divider from '@mui/material/Divider';
-import CardContent from '@mui/material/Card';
-import {getConfig} from "./utilities"
+import CardContent from '@mui/material/CardContent';
 import FormLabel from '@mui/material/FormLabel';
 import MenuItem from '@mui/material/MenuItem';
-import IconButton from '@mui/material/IconButton';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
-import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import {DisplayProfile} from "./components/DisplayProfile"
 import DisplaySourceCode from "./components/DisplaySourceCode"
-import CloseIcon from '@mui/icons-material/Close';
 import CodeIcon from '@mui/icons-material/Code';
 import AddIcon from '@mui/icons-material/Add';
+import ContentCopyOutlinedIcon from '@mui/icons-material/ContentCopyOutlined';
 import { Table, TableBody, TableCell, TableHead, TableRow } from '@mui/material';
-import UnderlineSpan from "./components/UnderlineSpan";
 import { RunningProfilesProvider, useRunningProfiles } from './providers/RunningProfilesContext';
 
 import EditIcon from '@mui/icons-material/Edit';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import SelectButton from "./components/SelectButton";
-import DeleteIcon from '@mui/icons-material/Delete';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import ViewTimelineOutlinedIcon from '@mui/icons-material/ViewTimelineOutlined';
 import PlayDisabledIcon from '@mui/icons-material/PlayDisabled';
 import { useConfirm } from 'material-ui-confirm';
-import { MQTTProvider, useMQTT } from './providers/MQTTContext';
 import { useExperiment } from './providers/ExperimentContext';
 import ManageExperimentMenu from "./components/ManageExperimentMenu";
-import StopIcon from '@mui/icons-material/Stop';
 import CircularProgress from '@mui/material/CircularProgress';
 import Chip from '@mui/material/Chip';
-
 
 /**
  * 1) Child component that displays the experiment profile dropdown,
@@ -109,9 +102,29 @@ function RunExperimentProfilesContent({
     setViewSource(!viewSource)
   };
 
+  const duplicate = () => {
+    if (!selectedExperimentProfile) {
+      return;
+    }
+    fetch(`/api/contrib/experiment_profiles/${selectedExperimentProfile}`, { method: 'GET' })
+      .then(res => {
+        if (!res.ok) {
+          throw new Error('Failed to fetch profile');
+        }
+        return res.text();
+      })
+      .then(text => {
+        const baseName = selectedExperimentProfile.replace(/\.ya?ml$/i, '');
+        navigate('/experiment-profiles/new', { state: { initialCode: text, initialFilename: `${baseName}_copy` } });
+      })
+      .catch(err => {
+        console.error('Error duplicating profile:', err);
+      });
+  };
+
   return (
     <Grid container spacing={1}>
-      <Grid item xs={6}>
+      <Grid size={4}>
         <Box sx={{ width: "100%", marginTop: 2,  display: "flex", justifyContent: "space-between" }}>
           <FormControl style={{ minWidth: "300px" }}>
             <FormLabel component="legend">Experiment profile</FormLabel>
@@ -134,10 +147,21 @@ function RunExperimentProfilesContent({
           </FormControl>
         </Box>
       </Grid>
-      <Grid item xs={2} />
-      <Grid container item xs={4} direction="column" alignItems="flex-end">
-        <Grid item xs={4} />
-        <Grid item xs={8} >
+      <Grid size={2} />
+      <Grid size={6}>
+        <Box sx={{justifyContent: "flex-end", display: "flex", width: "98%", alignSelf: "flex-end"}}>
+          <Button
+            variant="text"
+            size="small"
+            color="primary"
+            aria-label="view source code"
+            disabled={selectedExperimentProfile === ""}
+            onClick={getSourceAndView}
+            style={{ textTransform: "none" }}
+          >
+            <CodeIcon fontSize="small" sx={{ verticalAlign: "middle", margin: "0px 3px" }}/>
+            {viewSource ? "View preview" : "View source"}
+          </Button>
           <Button
             variant="text"
             size="small"
@@ -148,20 +172,20 @@ function RunExperimentProfilesContent({
             component={Link}
             disabled={ selectedExperimentProfile === ''}
           >
-            <EditIcon fontSize="15" sx={{ verticalAlign: "middle", margin: "0px 3px" }}/>
+            <EditIcon fontSize="small" sx={{ verticalAlign: "middle", margin: "0px 3px" }}/>
             Edit
           </Button>
           <Button
             variant="text"
             size="small"
             color="primary"
-            aria-label="view source code"
-            disabled={selectedExperimentProfile === ""}
-            onClick={getSourceAndView}
-            style={{ textTransform: "none" }}
+            aria-label="duplicate profile"
+            onClick={duplicate}
+            style={{ marginRight: "5px", textTransform: "none" }}
+            disabled={selectedExperimentProfile === ''}
           >
-            <CodeIcon fontSize="15" sx={{ verticalAlign: "middle", margin: "0px 3px" }}/>
-            {viewSource ? "View preview" : "View source"}
+            <ContentCopyOutlinedIcon fontSize="small" sx={{ verticalAlign: "middle", margin: "0px 3px" }}/>
+            Duplicate
           </Button>
           <Button
             variant="text"
@@ -172,13 +196,12 @@ function RunExperimentProfilesContent({
             style={{ marginRight: "5px", textTransform: "none" }}
             disabled={selectedExperimentProfile === ''}
           >
-            <DeleteIcon fontSize="15" sx={{ verticalAlign: "middle", margin: "0px 3px" }}/>
+            <DeleteOutlineIcon fontSize="small" sx={{ verticalAlign: "middle", margin: "0px 3px" }}/>
             Delete
           </Button>
-        </Grid>
+        </Box>
       </Grid>
-
-      <Grid item xs={12}>
+      <Grid size={12}>
         {selectedExperimentProfile !== "" && !viewSource &&
           <DisplayProfile data={experimentProfilesAvailable[selectedExperimentProfile].profile} />
         }
@@ -186,7 +209,6 @@ function RunExperimentProfilesContent({
           <DisplaySourceCode sourceCode={source} />
         }
       </Grid>
-
       <Box sx={{ display: "flex", justifyContent: "flex-end", marginLeft: 1 }}>
         <SelectButton
           variant="contained"
@@ -222,7 +244,6 @@ function RunProfilesContainer(props) {
           <Typography variant="h6" component="h2">
             <Box fontWeight="fontWeightRegular">Available profiles</Box>
           </Typography>
-          {/* Pass all relevant props through */}
           <RunExperimentProfilesContent {...props} experiment={experiment} />
         </CardContent>
       </Card>
@@ -252,7 +273,7 @@ function RunningProfilesContainer() {
     <React.Fragment>
       <Card>
         <CardContent sx={{ p: 2 }}>
-          <Typography variant="h6" component="h2">
+          <Typography variant="h6" component="h2" gutterBottom>
             <Box fontWeight="fontWeightRegular">Profiles Running</Box>
           </Typography>
           {loading && (
@@ -261,7 +282,7 @@ function RunningProfilesContainer() {
             </Box>
           )}
           {!loading && runningProfiles.length === 0 && (
-            <p>No profiles are currently running.</p>
+            <Typography variant="body2" component="p">No profiles are currently running.</Typography>
           )}
           {!loading && runningProfiles.length > 0 && (
             <Table size="small" sx={{ mt: 0 }}>
@@ -320,6 +341,7 @@ function Profiles(props) {
   const [source, setSource] = React.useState("Loading...");
   const [dryRun, setDryRun] = React.useState(false);
 
+
   React.useEffect(() => {
     document.title = props.title;
   }, [props.title]);
@@ -349,7 +371,11 @@ function Profiles(props) {
   return (
     <RunningProfilesProvider experiment={experimentMetadata.experiment}>
       <Grid container spacing={2}>
-        <Grid item md={12} xs={12}>
+        <Grid
+          size={{
+            md: 12,
+            xs: 12
+          }}>
           <Box>
             <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
               <Typography variant="h5" component="h2">
@@ -364,7 +390,7 @@ function Profiles(props) {
                   style={{ textTransform: 'none', marginRight: "0px", float: "right" }}
                   color="primary"
                 >
-                  <AddIcon fontSize="15" sx={{ verticalAlign: "middle", margin: "0px 3px" }}/>
+                  <AddIcon fontSize="small" sx={{ verticalAlign: "middle", margin: "0px 3px" }}/>
                   Create new profile
                 </Button>
                 <Divider orientation="vertical" flexItem variant="middle" />
@@ -376,7 +402,11 @@ function Profiles(props) {
         </Grid>
 
         {/* Left side: For selecting a profile or running a new profile */}
-        <Grid item md={8} xs={12}>
+        <Grid
+          size={{
+            md: 8,
+            xs: 12
+          }}>
           <RunProfilesContainer
             experiment={experimentMetadata.experiment}
             // Pass all the “lifted” states + setters
@@ -394,11 +424,15 @@ function Profiles(props) {
         </Grid>
 
         {/* Right side: The table of running profiles with clickable Chips */}
-        <Grid item md={4} xs={12}>
+        <Grid
+          size={{
+            md: 4,
+            xs: 12
+          }}>
           <RunningProfilesContainer />
         </Grid>
 
-        <Grid item xs={12}>
+        <Grid size={12}>
           <p style={{ textAlign: "center", marginTop: "20px" }}>
             Learn more about{" "}
             <a href="https://docs.pioreactor.com/user-guide/experiment-profiles" target="_blank" rel="noopener noreferrer">

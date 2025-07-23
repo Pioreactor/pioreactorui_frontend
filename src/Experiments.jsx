@@ -14,9 +14,9 @@ import Box from '@mui/material/Box';
 import MenuItem from '@mui/material/MenuItem';
 import Checkbox from '@mui/material/Checkbox';
 import Card from '@mui/material/Card';
-import CardContent from '@mui/material/Card';
-import {getConfig, getRelabelMap, colors, DefaultDict} from "./utilities"
-import GetAppIcon from '@mui/icons-material/GetApp';
+import CardContent from '@mui/material/CardContent';
+import {getConfig, getRelabelMap, colors, ColorCycler} from "./utilities"
+import DownloadIcon from '@mui/icons-material/Download';
 import { Link } from 'react-router-dom';
 
 // TODO:
@@ -134,7 +134,7 @@ function ExperimentsContainer(props) {
   const [chartSelection, setChartSelection] = React.useState({})
   const [config, setConfig] = React.useState({})
   const [relabelMap, setRelabelMap] = React.useState({})
-  const unitsColorMap = new DefaultDict(colors)
+  const unitsColorMap = new ColorCycler(colors)
 
 
   React.useEffect(() => {
@@ -181,7 +181,6 @@ function ExperimentsContainer(props) {
 
   return (
     <React.Fragment>
-
       <Box>
         <Box sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}>
           <Typography variant="h5" component="h2">
@@ -191,33 +190,40 @@ function ExperimentsContainer(props) {
           </Typography>
           <Box sx={{display: "flex", flexDirection: "row", justifyContent: "flex-start", flexFlow: "wrap"}}>
             <Button to={`/export-data?experiment=${experimentSelection}&experiments=1${additionalQueryString}`} component={Link} style={{textTransform: 'none', marginRight: "0px", float: "right"}} color="primary">
-              <GetAppIcon fontSize="15" sx={{verticalAlign: "middle", margin: "0px 3px"}}/> Export experiment data
+              <DownloadIcon fontSize="small" sx={{verticalAlign: "middle", margin: "0px 3px"}}/> Export experiment data
             </Button>
           </Box>
         </Box>
       </Box>
-
       <Card>
         <CardContent sx={{p: 1}}>
           <Grid container spacing={2} justifyContent="space-between">
-            <Grid item xs={6}>
+            <Grid size={6}>
               <ExperimentSelection
                 experimentSelection={experimentSelection}
                 handleExperimentSelectionChange={handleExperimentSelectionChange}
               />
             </Grid>
-            <Grid item xs={6}>
+            <Grid size={6}>
               <ChartSelection
                 chartSelection={chartSelection}
                 handleChartSelectionChange={handleChartSelectionChange}
                 config={config}
               />
             </Grid>
-            <Grid item xs={12} md={12} container spacing={2} justifyContent="flex-start" style={{height: "100%"}}>
+            <Grid
+              container
+              spacing={2}
+              justifyContent="flex-start"
+              style={{height: "100%"}}
+              size={{
+                xs: 12,
+                md: 12
+              }}>
               {Object.entries(chartSelection).sort()
                 .map(([chart_key, chart]) =>
                   <React.Fragment key={`grid-chart-${chart_key}`}>
-                    <Grid item xs={6}>
+                    <Grid size={6}>
                       <Chart
                         chart_key={`chart-${chart_key}`}
                         config={config}
@@ -260,12 +266,16 @@ function Experiments(props) {
       document.title = props.title;
     }, [props.title]);
     return (
-        <Grid container spacing={2} >
-          <Grid item md={12} xs={12}>
-            <ExperimentsContainer/>
-          </Grid>
+      <Grid container spacing={2} >
+        <Grid
+          size={{
+            md: 12,
+            xs: 12
+          }}>
+          <ExperimentsContainer/>
         </Grid>
-    )
+      </Grid>
+    );
 }
 
 export default Experiments;
