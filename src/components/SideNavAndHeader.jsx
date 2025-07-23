@@ -311,7 +311,6 @@ export default function SideNavAndHeader() {
                 Profiles
               </MenuItem>
 
-<<<<<<< HEAD
               <MenuItem
                 icon={
                       <VideocamOutlinedIcon/>
@@ -321,8 +320,6 @@ export default function SideNavAndHeader() {
                 >
                 Webcams
               </MenuItem>
-=======
->>>>>>> main
 
             <Divider sx={{marginTop: "15px", marginBottom: "15px"}} />
           </Menu>
